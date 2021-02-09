@@ -3,43 +3,41 @@
 #include<stdio.h>
 #include<math.h>
 #include<string.h>
-
 // cache-oblivious algorithm
-// args: A, B, C, size of submatrix, id for A, B and C 
-/*void cache_oblv(float **A, float **B, float **C, int N, int depth, int* Ai, int* Bi, int* Ci, int* Aj, int* Bj, int* Cj) {
-  float sum;
-  int   i;
-  int   j;
-  int   k;
-  if (N==1) {
-     C[0][0]=A[0][0]*B[0][0];
-  }else{
-   // call cache-oblivious eight times add corresponding values to C
-   cache_oblv
-
- 
-  }
-
-
-}*/
-
 void cache_oblv(float **A, float **B, float **C, int N, int Ai, int Aj, int Bi, int Bj, int Ci, int Cj) {
  
   int bs = N/2.0;
- 
+ //  printf("the block size: %d\n",bs); 
   if (N==1) {
-     C[Ci][Cj]=A[Ai][Aj]*B[Bi][Bj];
+     C[Ci][Cj]+=A[Ai][Aj]*B[Bi][Bj];
+     //printf("%f\n",C[Ci][Cj]);
   }else{
 
-    cache_oblv(A,B,C,bs, Ai, Aj, Bi, Bj, Ci, Cj); cache_oblv(A,B,C,bs, Ai, Aj+bs, Bi+bs, Bj, Ci, Cj);
+    cache_oblv(A,B,C,bs, Ai, Aj, Bi, Bj, Ci, Cj); cache_oblv(A,B,C,bs, Ai, Aj+bs, Bi+bs, Bj, Ci, Cj);//print_matrix(C,N);
     cache_oblv(A,B,C,bs, Ai, Aj, Bi, Bj+bs, Ci, Cj+bs); cache_oblv(A,B,C,bs, Ai, Aj+bs, Bi+bs, Bj+bs, Ci, Cj+bs);
     cache_oblv(A,B,C,bs, Ai+bs, Aj, Bi, Bj, Ci+bs, Cj); cache_oblv(A,B,C,bs, Ai+bs, Aj+bs, Bi+bs, Bj, Ci+bs, Cj);
     cache_oblv(A,B,C,bs, Ai+bs, Aj, Bi, Bj+bs, Ci+bs, Cj+bs); cache_oblv(A,B,C,bs, Ai+bs, Aj+bs, Bi+bs, Bj+bs, Ci+bs, Cj+bs);
 
-
   }
 
 }
+
+void print_matrix(float **A, int N){
+
+      for( int i = 0; i < N; i++){
+        for( int j = 0; j < N; j++)
+                   { printf(" %f ", A[i][j]);}
+                printf( "\n");}
+      printf("\n");
+}
+void assign_values(float **A, int N){
+
+      for( int i = 0; i < N; i++){
+        for( int j = 0; j < N; j++)
+            {  A[i][j]= (float) rand()/RAND_MAX;}}
+
+}
+
 
 // calculate C = AxB
 void matmul(float **A, float **B, float **C, int Nmat) {
@@ -85,23 +83,18 @@ int main(int argc, char **argv) {
   float** C;
   int M, N, P;
   int depth= log2f(Nmat);
-  int Ai[depth],Bi[depth],Ci[depth],Aj[depth],Bj[depth],Cj[depth];
-  memset(Ai, 0, depth*sizeof(int));memset(Bi, 0, depth*sizeof(int));memset(Ci, 0, depth*sizeof(int));
-  memset(Aj, 0, depth*sizeof(int));memset(Bj, 0, depth*sizeof(int));memset(Aj, 0, depth*sizeof(int));  
-  printf("depth %d\n", depth);printf("M=%d\n",M);
-  for (int i=0;i<depth;i++ ){printf("%d ",Ai[i]);}
   M = Nmat; N = Nmat; P = Nmat;
   create_matrix(&A, M, P);
   create_matrix(&B, P, N);
   create_matrix(&C, M, N);
-  
+  assign_values(A,Nmat);assign_values(B,Nmat); 
   // assume some initialization of A and B
   // think of this as a library where A and B are
   // inputs in row-major format, and C is an output
   // in row-major.
-
+ // print_matrix(A,Nmat);print_matrix(B,Nmat);
   cache_oblv(A, B, C, Nmat, 0, 0, 0, 0, 0, 0);
-
+ // print_matrix(C,Nmat);
   return (0);
 }
 
