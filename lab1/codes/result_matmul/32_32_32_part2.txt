@@ -1,0 +1,240 @@
+# started on Wed Feb 10 07:57:51 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213653      L1-dcache-load                                              
+              8349      L1-dcache-load-misses     #    3.91% of all L1-dcache hits  
+             40340      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.002058038 seconds time elapsed
+
+# started on Wed Feb 10 07:57:51 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213660      L1-dcache-load                                              
+              8198      L1-dcache-load-misses     #    3.84% of all L1-dcache hits  
+             40340      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001861526 seconds time elapsed
+
+# started on Wed Feb 10 07:57:52 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213662      L1-dcache-load                                              
+              8294      L1-dcache-load-misses     #    3.88% of all L1-dcache hits  
+             40346      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.002146826 seconds time elapsed
+
+# started on Wed Feb 10 07:57:53 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213659      L1-dcache-load                                              
+              8140      L1-dcache-load-misses     #    3.81% of all L1-dcache hits  
+             40339      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001632138 seconds time elapsed
+
+# started on Wed Feb 10 07:57:53 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213653      L1-dcache-load                                              
+              8175      L1-dcache-load-misses     #    3.83% of all L1-dcache hits  
+             40339      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.003865295 seconds time elapsed
+
+# started on Wed Feb 10 07:57:54 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213659      L1-dcache-load                                              
+              8224      L1-dcache-load-misses     #    3.85% of all L1-dcache hits  
+             40340      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001753394 seconds time elapsed
+
+# started on Wed Feb 10 07:57:54 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213652      L1-dcache-load                                              
+              8365      L1-dcache-load-misses     #    3.92% of all L1-dcache hits  
+             40339      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001830442 seconds time elapsed
+
+# started on Wed Feb 10 07:57:55 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213660      L1-dcache-load                                              
+              8205      L1-dcache-load-misses     #    3.84% of all L1-dcache hits  
+             40341      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001727836 seconds time elapsed
+
+# started on Wed Feb 10 07:57:56 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213652      L1-dcache-load                                              
+              8251      L1-dcache-load-misses     #    3.86% of all L1-dcache hits  
+             40339      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.002346924 seconds time elapsed
+
+# started on Wed Feb 10 07:57:56 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213659      L1-dcache-load                                              
+              8228      L1-dcache-load-misses     #    3.85% of all L1-dcache hits  
+             40341      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001763980 seconds time elapsed
+
+# started on Wed Feb 10 07:57:57 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213660      L1-dcache-load                                              
+              8218      L1-dcache-load-misses     #    3.85% of all L1-dcache hits  
+             40340      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001867920 seconds time elapsed
+
+# started on Wed Feb 10 07:57:58 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213658      L1-dcache-load                                              
+              8367      L1-dcache-load-misses     #    3.92% of all L1-dcache hits  
+             40339      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001630322 seconds time elapsed
+
+# started on Wed Feb 10 07:57:58 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213655      L1-dcache-load                                              
+              8158      L1-dcache-load-misses     #    3.82% of all L1-dcache hits  
+             40339      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001761931 seconds time elapsed
+
+# started on Wed Feb 10 07:57:59 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213653      L1-dcache-load                                              
+              8274      L1-dcache-load-misses     #    3.87% of all L1-dcache hits  
+             40339      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001716200 seconds time elapsed
+
+# started on Wed Feb 10 07:57:59 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213659      L1-dcache-load                                              
+              8303      L1-dcache-load-misses     #    3.89% of all L1-dcache hits  
+             40340      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001698573 seconds time elapsed
+
+# started on Wed Feb 10 07:58:00 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213693      L1-dcache-load                                              
+              8345      L1-dcache-load-misses     #    3.91% of all L1-dcache hits  
+             40360      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001749809 seconds time elapsed
+
+# started on Wed Feb 10 07:58:01 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213657      L1-dcache-load                                              
+              8225      L1-dcache-load-misses     #    3.85% of all L1-dcache hits  
+             40343      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001927404 seconds time elapsed
+
+# started on Wed Feb 10 07:58:01 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213662      L1-dcache-load                                              
+              8359      L1-dcache-load-misses     #    3.91% of all L1-dcache hits  
+             40343      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001756289 seconds time elapsed
+
+# started on Wed Feb 10 07:58:02 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213580      L1-dcache-load                                              
+              8420      L1-dcache-load-misses     #    3.94% of all L1-dcache hits  
+             40344      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001890160 seconds time elapsed
+
+# started on Wed Feb 10 07:58:03 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            213657      L1-dcache-load                                              
+              8201      L1-dcache-load-misses     #    3.84% of all L1-dcache hits  
+             40343      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+       0.001655290 seconds time elapsed
+

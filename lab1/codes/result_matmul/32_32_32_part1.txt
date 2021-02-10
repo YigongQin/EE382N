@@ -1,0 +1,240 @@
+# started on Wed Feb 10 07:57:50 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            832391      cycles:u                                                    
+            731192      instructions:u            #    0.88  insn per cycle         
+              8049      cache-references:u                                          
+              1408      cache-misses:u            #   17.493 % of all cache refs    
+
+       0.035553743 seconds time elapsed
+
+# started on Wed Feb 10 07:57:51 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            783888      cycles:u                                                    
+            731253      instructions:u            #    0.93  insn per cycle         
+              7771      cache-references:u                                          
+               146      cache-misses:u            #    1.879 % of all cache refs    
+
+       0.002015252 seconds time elapsed
+
+# started on Wed Feb 10 07:57:52 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            776030      cycles:u                                                    
+            731217      instructions:u            #    0.94  insn per cycle         
+              7513      cache-references:u                                          
+               139      cache-misses:u            #    1.850 % of all cache refs    
+
+       0.001947811 seconds time elapsed
+
+# started on Wed Feb 10 07:57:52 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            776374      cycles:u                                                    
+            731232      instructions:u            #    0.94  insn per cycle         
+              7805      cache-references:u                                          
+               170      cache-misses:u            #    2.178 % of all cache refs    
+
+       0.001854146 seconds time elapsed
+
+# started on Wed Feb 10 07:57:53 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            798277      cycles:u                                                    
+            731188      instructions:u            #    0.92  insn per cycle         
+              7806      cache-references:u                                          
+              1153      cache-misses:u            #   14.771 % of all cache refs    
+
+       0.001858977 seconds time elapsed
+
+# started on Wed Feb 10 07:57:54 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            778510      cycles:u                                                    
+            731190      instructions:u            #    0.94  insn per cycle         
+              7575      cache-references:u                                          
+                46      cache-misses:u            #    0.607 % of all cache refs    
+
+       0.001797686 seconds time elapsed
+
+# started on Wed Feb 10 07:57:54 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            781383      cycles:u                                                    
+            731218      instructions:u            #    0.94  insn per cycle         
+              7784      cache-references:u                                          
+               442      cache-misses:u            #    5.678 % of all cache refs    
+
+       0.001911949 seconds time elapsed
+
+# started on Wed Feb 10 07:57:55 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            784974      cycles:u                                                    
+            731218      instructions:u            #    0.93  insn per cycle         
+              7680      cache-references:u                                          
+               351      cache-misses:u            #    4.570 % of all cache refs    
+
+       0.001923849 seconds time elapsed
+
+# started on Wed Feb 10 07:57:55 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            780574      cycles:u                                                    
+            731190      instructions:u            #    0.94  insn per cycle         
+              7653      cache-references:u                                          
+               450      cache-misses:u            #    5.880 % of all cache refs    
+
+       0.001999944 seconds time elapsed
+
+# started on Wed Feb 10 07:57:56 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            787301      cycles:u                                                    
+            731222      instructions:u            #    0.93  insn per cycle         
+              7709      cache-references:u                                          
+               386      cache-misses:u            #    5.007 % of all cache refs    
+
+       0.001765722 seconds time elapsed
+
+# started on Wed Feb 10 07:57:57 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            780695      cycles:u                                                    
+            731224      instructions:u            #    0.94  insn per cycle         
+              7653      cache-references:u                                          
+               169      cache-misses:u            #    2.208 % of all cache refs    
+
+       0.002065684 seconds time elapsed
+
+# started on Wed Feb 10 07:57:57 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            785783      cycles:u                                                    
+            731216      instructions:u            #    0.93  insn per cycle         
+              7845      cache-references:u                                          
+               486      cache-misses:u            #    6.195 % of all cache refs    
+
+       0.001807124 seconds time elapsed
+
+# started on Wed Feb 10 07:57:58 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            779210      cycles:u                                                    
+            731214      instructions:u            #    0.94  insn per cycle         
+              7727      cache-references:u                                          
+               202      cache-misses:u            #    2.614 % of all cache refs    
+
+       0.001825841 seconds time elapsed
+
+# started on Wed Feb 10 07:57:59 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            786783      cycles:u                                                    
+            731205      instructions:u            #    0.93  insn per cycle         
+              7467      cache-references:u                                          
+               445      cache-misses:u            #    5.960 % of all cache refs    
+
+       0.001821140 seconds time elapsed
+
+# started on Wed Feb 10 07:57:59 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            773901      cycles:u                                                    
+            731188      instructions:u            #    0.94  insn per cycle         
+              7710      cache-references:u                                          
+               233      cache-misses:u            #    3.022 % of all cache refs    
+
+       0.001978424 seconds time elapsed
+
+# started on Wed Feb 10 07:58:00 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            789304      cycles:u                                                    
+            731240      instructions:u            #    0.93  insn per cycle         
+              7481      cache-references:u                                          
+               437      cache-misses:u            #    5.841 % of all cache refs    
+
+       0.001620873 seconds time elapsed
+
+# started on Wed Feb 10 07:58:00 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            787067      cycles:u                                                    
+            731249      instructions:u            #    0.93  insn per cycle         
+              7664      cache-references:u                                          
+               467      cache-misses:u            #    6.093 % of all cache refs    
+
+       0.001789082 seconds time elapsed
+
+# started on Wed Feb 10 07:58:01 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            782029      cycles:u                                                    
+            731258      instructions:u            #    0.94  insn per cycle         
+              7572      cache-references:u                                          
+               388      cache-misses:u            #    5.124 % of all cache refs    
+
+       0.001651417 seconds time elapsed
+
+# started on Wed Feb 10 07:58:02 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            772922      cycles:u                                                    
+            731223      instructions:u            #    0.95  insn per cycle         
+              7479      cache-references:u                                          
+               355      cache-misses:u            #    4.747 % of all cache refs    
+
+       0.001819743 seconds time elapsed
+
+# started on Wed Feb 10 07:58:02 2021
+
+
+ Performance counter stats for './matmul 32 32 32':
+
+            798059      cycles:u                                                    
+            731234      instructions:u            #    0.92  insn per cycle         
+              7732      cache-references:u                                          
+               611      cache-misses:u            #    7.902 % of all cache refs    
+
+       0.001742457 seconds time elapsed
+

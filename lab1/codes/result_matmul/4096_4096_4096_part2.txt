@@ -1,0 +1,204 @@
+# started on Wed Feb 10 08:03:21 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175501169      L1-dcache-load                                              
+       64311764123      L1-dcache-load-misses     #   31.19% of all L1-dcache hits  
+          17227322      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     308.226194881 seconds time elapsed
+
+# started on Wed Feb 10 08:13:32 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175556497      L1-dcache-load                                              
+       64293084763      L1-dcache-load-misses     #   31.18% of all L1-dcache hits  
+          17227318      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     303.825976095 seconds time elapsed
+
+# started on Wed Feb 10 08:23:42 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206174749926      L1-dcache-load                                              
+       64307337225      L1-dcache-load-misses     #   31.19% of all L1-dcache hits  
+          17227318      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     295.238133851 seconds time elapsed
+
+# started on Wed Feb 10 08:33:43 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175584119      L1-dcache-load                                              
+       64316591234      L1-dcache-load-misses     #   31.20% of all L1-dcache hits  
+          17227319      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     304.366115319 seconds time elapsed
+
+# started on Wed Feb 10 08:43:55 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175629900      L1-dcache-load                                              
+       64379351489      L1-dcache-load-misses     #   31.23% of all L1-dcache hits  
+          17227318      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     304.666260188 seconds time elapsed
+
+# started on Wed Feb 10 08:54:05 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175552596      L1-dcache-load                                              
+       64314066621      L1-dcache-load-misses     #   31.19% of all L1-dcache hits  
+          17227323      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     306.949116025 seconds time elapsed
+
+# started on Wed Feb 10 09:04:09 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175553393      L1-dcache-load                                              
+       64398457749      L1-dcache-load-misses     #   31.23% of all L1-dcache hits  
+          17227327      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     318.498601081 seconds time elapsed
+
+# started on Wed Feb 10 09:14:46 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175635881      L1-dcache-load                                              
+       64302511127      L1-dcache-load-misses     #   31.19% of all L1-dcache hits  
+          17227319      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     297.976055352 seconds time elapsed
+
+# started on Wed Feb 10 09:24:46 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175435051      L1-dcache-load                                              
+       64394964889      L1-dcache-load-misses     #   31.23% of all L1-dcache hits  
+          17227319      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     326.394973244 seconds time elapsed
+
+# started on Wed Feb 10 09:35:44 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175569032      L1-dcache-load                                              
+       64390733847      L1-dcache-load-misses     #   31.23% of all L1-dcache hits  
+          17227318      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     335.612263554 seconds time elapsed
+
+# started on Wed Feb 10 09:46:18 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175497243      L1-dcache-load                                              
+       64387593944      L1-dcache-load-misses     #   31.23% of all L1-dcache hits  
+          17227320      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     347.499682720 seconds time elapsed
+
+# started on Wed Feb 10 09:58:03 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175561131      L1-dcache-load                                              
+       64313589174      L1-dcache-load-misses     #   31.19% of all L1-dcache hits  
+          17227339      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     301.449363214 seconds time elapsed
+
+# started on Wed Feb 10 10:08:12 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206173960822      L1-dcache-load                                              
+       64390140120      L1-dcache-load-misses     #   31.23% of all L1-dcache hits  
+          17227318      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     295.146393569 seconds time elapsed
+
+# started on Wed Feb 10 10:18:11 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175624749      L1-dcache-load                                              
+       64382412025      L1-dcache-load-misses     #   31.23% of all L1-dcache hits  
+          17227315      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     302.768734306 seconds time elapsed
+
+# started on Wed Feb 10 10:28:10 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175560125      L1-dcache-load                                              
+       64374096993      L1-dcache-load-misses     #   31.22% of all L1-dcache hits  
+          17227322      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     304.635179606 seconds time elapsed
+
+# started on Wed Feb 10 10:38:22 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175686183      L1-dcache-load                                              
+       64392171923      L1-dcache-load-misses     #   31.23% of all L1-dcache hits  
+          17227314      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     306.405028880 seconds time elapsed
+
+# started on Wed Feb 10 10:48:39 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+      206175567260      L1-dcache-load                                              
+       64382770255      L1-dcache-load-misses     #   31.23% of all L1-dcache hits  
+          17227315      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+     312.931996831 seconds time elapsed
+
