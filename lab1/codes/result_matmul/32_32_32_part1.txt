@@ -238,3 +238,11 @@
 
        0.001742457 seconds time elapsed
 
+total cycles = 15715455
+total instructions = 14624371
+total cache_references = 153675
+total cache_misses = 8484
+total L1_dcache_load = 0
+total L1_dcache_load_misses = 0
+total L1_dcache_stores = 0
+total L1_dcache_store_misses = 0
