@@ -1,0 +1,212 @@
+# started on Wed Feb 10 07:58:22 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080616129512      cycles:u                                                    
+      481207498447      instructions:u            #    0.45  insn per cycle         
+        1092110027      cache-references:u                                          
+           5281351      cache-misses:u            #    0.484 % of all cache refs    
+
+     299.202348446 seconds time elapsed
+
+# started on Wed Feb 10 08:08:30 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080088155444      cycles:u                                                    
+      481207491650      instructions:u            #    0.45  insn per cycle         
+        1087426368      cache-references:u                                          
+           6676948      cache-misses:u            #    0.614 % of all cache refs    
+
+     301.518338465 seconds time elapsed
+
+# started on Wed Feb 10 08:18:36 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080323129930      cycles:u                                                    
+      481207495754      instructions:u            #    0.45  insn per cycle         
+        1092433745      cache-references:u                                          
+          12646819      cache-misses:u            #    1.158 % of all cache refs    
+
+     306.188871820 seconds time elapsed
+
+# started on Wed Feb 10 08:28:38 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080280950002      cycles:u                                                    
+      481207494139      instructions:u            #    0.45  insn per cycle         
+        1093540697      cache-references:u                                          
+           9659215      cache-misses:u            #    0.883 % of all cache refs    
+
+     304.891759676 seconds time elapsed
+
+# started on Wed Feb 10 08:38:48 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080244960821      cycles:u                                                    
+      481207495478      instructions:u            #    0.45  insn per cycle         
+        1092098510      cache-references:u                                          
+           8761328      cache-misses:u            #    0.802 % of all cache refs    
+
+     306.418267197 seconds time elapsed
+
+# started on Wed Feb 10 08:49:00 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080428754983      cycles:u                                                    
+      481207504234      instructions:u            #    0.45  insn per cycle         
+        1090292127      cache-references:u                                          
+          10070669      cache-misses:u            #    0.924 % of all cache refs    
+
+     304.944547675 seconds time elapsed
+
+# started on Wed Feb 10 08:59:12 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1079857282919      cycles:u                                                    
+      481207482144      instructions:u            #    0.45  insn per cycle         
+        1088018803      cache-references:u                                          
+           5083187      cache-misses:u            #    0.467 % of all cache refs    
+
+     296.695159125 seconds time elapsed
+
+# started on Wed Feb 10 09:09:28 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080376523307      cycles:u                                                    
+      481207507565      instructions:u            #    0.45  insn per cycle         
+        1090656124      cache-references:u                                          
+          13299168      cache-misses:u            #    1.219 % of all cache refs    
+
+     317.923835500 seconds time elapsed
+
+# started on Wed Feb 10 09:19:45 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080216191564      cycles:u                                                    
+      481207491813      instructions:u            #    0.45  insn per cycle         
+        1089045818      cache-references:u                                          
+           8779344      cache-misses:u            #    0.806 % of all cache refs    
+
+     301.239500246 seconds time elapsed
+
+# started on Wed Feb 10 09:30:13 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1081131602860      cycles:u                                                    
+      481207529732      instructions:u            #    0.45  insn per cycle         
+        1101625912      cache-references:u                                          
+          16454466      cache-misses:u            #    1.494 % of all cache refs    
+
+     330.444193037 seconds time elapsed
+
+# started on Wed Feb 10 09:41:20 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1079925133194      cycles:u                                                    
+      481207496809      instructions:u            #    0.45  insn per cycle         
+        1087127461      cache-references:u                                          
+           8982328      cache-misses:u            #    0.826 % of all cache refs    
+
+     298.048913279 seconds time elapsed
+
+# started on Wed Feb 10 09:52:06 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1081007165174      cycles:u                                                    
+      481207552799      instructions:u            #    0.45  insn per cycle         
+        1120386084      cache-references:u                                          
+          15130916      cache-misses:u            #    1.351 % of all cache refs    
+
+     356.994231853 seconds time elapsed
+
+# started on Wed Feb 10 10:03:05 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080453939725      cycles:u                                                    
+      481207497108      instructions:u            #    0.45  insn per cycle         
+        1089778919      cache-references:u                                          
+          10122887      cache-misses:u            #    0.929 % of all cache refs    
+
+     306.399101849 seconds time elapsed
+
+# started on Wed Feb 10 10:13:07 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080791078998      cycles:u                                                    
+      481207494107      instructions:u            #    0.45  insn per cycle         
+        1089515081      cache-references:u                                          
+          20230738      cache-misses:u            #    1.857 % of all cache refs    
+
+     303.952639010 seconds time elapsed
+
+# started on Wed Feb 10 10:23:15 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080077685257      cycles:u                                                    
+      481207481406      instructions:u            #    0.45  insn per cycle         
+        1092830959      cache-references:u                                          
+           5588057      cache-misses:u            #    0.511 % of all cache refs    
+
+     294.881342289 seconds time elapsed
+
+# started on Wed Feb 10 10:33:15 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080175416672      cycles:u                                                    
+      481207497311      instructions:u            #    0.45  insn per cycle         
+        1097823072      cache-references:u                                          
+          13835010      cache-misses:u            #    1.260 % of all cache refs    
+
+     307.226852366 seconds time elapsed
+
+# started on Wed Feb 10 10:43:29 2021
+
+
+ Performance counter stats for './matmul 4096 4096 4096':
+
+     1080479759086      cycles:u                                                    
+      481207499338      instructions:u            #    0.45  insn per cycle         
+        1087339873      cache-references:u                                          
+          13541615      cache-misses:u            #    1.245 % of all cache refs    
+
+     309.791271507 seconds time elapsed
+
+total cycles = 18366473859448
+total instructions = 8180527509834
+total cache_references = 18582049580
+total cache_misses = 184144046
+total L1_dcache_load = 0
+total L1_dcache_load_misses = 0
+total L1_dcache_stores = 0
+total L1_dcache_store_misses = 0
