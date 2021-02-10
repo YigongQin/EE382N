@@ -3,12 +3,30 @@
 #include<stdio.h>
 #include<math.h>
 #include<string.h>
+#define Ncut 8
 // cache-oblivious algorithm
 void cache_oblv(float **A, float **B, float **C, int N, int Ai, int Aj, int Bi, int Bj, int Ci, int Cj) {
  
   int bs = N/2.0;
  //  printf("the block size: %d\n",bs); 
-  if (N==1) {
+  if (N==Ncut) {
+     float sum;
+     // call ijk algorithm
+     for (int i=0; i<N; i++) {
+        // for each row of C
+        for (int j=0; j<N; j++) {
+        // for each column of C
+            sum = 0.0f; // temporary value
+           // for (int k=0; k<N; k++) {
+        // dot product of row from A and column from B
+            sum += A[Ai+i][Aj+0]*B[Bi+0][Bj+j];sum += A[Ai+i][Aj+1]*B[Bi+1][Bj+j];
+            sum += A[Ai+i][Aj+2]*B[Bi+2][Bj+j];sum += A[Ai+i][Aj+3]*B[Bi+3][Bj+j];
+            sum += A[Ai+i][Aj+4]*B[Bi+4][Bj+j];sum += A[Ai+i][Aj+5]*B[Bi+5][Bj+j];
+            sum += A[Ai+i][Aj+6]*B[Bi+6][Bj+j];sum += A[Ai+i][Aj+7]*B[Bi+7][Bj+j];
+          //}
+            C[Ci+i][Cj+j] = sum;
+    }}
+  }else if (N==1){
      C[Ci][Cj]+=A[Ai][Aj]*B[Bi][Bj];
      //printf("%f\n",C[Ci][Cj]);
   }else{
@@ -39,27 +57,16 @@ void assign_values(float **A, int N){
 }
 
 
-// calculate C = AxB
-void matmul(float **A, float **B, float **C, int Nmat) {
-  float sum;
-  int   i;
-  int   j;
-  int   k;
-  int M, N, P;
-  M=Nmat; N=Nmat; P=Nmat;
-  for (i=0; i<M; i++) {
-    // for each row of C
-    for (j=0; j<N; j++) {
-      // for each column of C
-      sum = 0.0f; // temporary value
-      for (k=0; k<P; k++) {
-        // dot product of row from A and column from B
-        sum += A[i][k]*B[k][j];
-      }
-      C[i][j] = sum;
+
+
+void transpose(float **A, int N) {
+    float temp;
+    for(int i = 0; i<N; i++) {
+        for (int j = i+1; j<N; j++)  
+           {temp = A[j][i]; A[j][i]=A[i][j]; A[i][j] = temp;}
     }
-  }
 }
+
 
 // function to allocate a matrix on the heap
 // creates an mXn matrix and returns the pointer.
@@ -93,8 +100,11 @@ int main(int argc, char **argv) {
   // inputs in row-major format, and C is an output
   // in row-major.
  // print_matrix(A,Nmat);print_matrix(B,Nmat);
+ // cache_oblv(A, B, C, Nmat, 0, 0, 0, 0, 0, 0);
+ // transpose(B, Nmat);
+ // print_matrix(B,Nmat);
   cache_oblv(A, B, C, Nmat, 0, 0, 0, 0, 0, 0);
- // print_matrix(C,Nmat);
+  //print_matrix(C,Nmat);
   return (0);
 }
 
