@@ -91,5 +91,32 @@ echo "total time = ${time}">> ${input}
 average="$(echo "${time}/20" | bc -l)"
 average="$(echo "$average" | sed -e 's/^\(.*\..*[^0]\)0*/\1/' -e p)"
 echo "time = ${average}">> ${input}
+
+## quantities of interests:
+
+if [ $((cycles)) != 0 ]
+then 
+  instrpc="$(echo "scale=3 ; $((instructions))/$((cycles))" | bc -l)"
+  echo "instructions/cycle = ${instrpc}">> ${input}
+fi
+
+if [ $((cache_references)) != 0 ] 
+then
+  LLCMR="$(echo "scale=5 ; $((cache_misses))/$((cache_references))" | bc -l)"
+  echo "LLC cache miss rate = ${LLCMR}">> ${input}
+fi
+
+if [ $((L1_dcache_load)) != 0 ]
+then
+  L1MR="$(echo "scale=5 ; $((L1_dcache_load_misses))/$((L1_dcache_load))" | bc -l)"
+  echo "L1 cache miss rate = ${L1MR}">> ${input}
+fi
+
 # echo "scale=2 ; $((time)) / 20" | bc -l >> ${input}
 done
+
+
+
+
+
+
