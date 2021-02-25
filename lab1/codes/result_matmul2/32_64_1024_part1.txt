@@ -1,0 +1,240 @@
+# started on Thu Feb 25 10:13:21 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,563,866      cycles:u                                                    
+       992,180,087      instructions:u            #    2.61  insn per cycle         
+           242,986      cache-references:u                                          
+             7,266      cache-misses:u            #    2.990 % of all cache refs    
+
+       0.120904649 seconds time elapsed
+
+# started on Thu Feb 25 10:13:22 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,262,416      cycles:u                                                    
+       992,180,102      instructions:u            #    2.62  insn per cycle         
+           251,872      cache-references:u                                          
+             2,285      cache-misses:u            #    0.907 % of all cache refs    
+
+       0.122546505 seconds time elapsed
+
+# started on Thu Feb 25 10:13:23 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,269,847      cycles:u                                                    
+       992,180,122      instructions:u            #    2.62  insn per cycle         
+           238,921      cache-references:u                                          
+             3,818      cache-misses:u            #    1.598 % of all cache refs    
+
+       0.106543432 seconds time elapsed
+
+# started on Thu Feb 25 10:13:23 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,170,751      cycles:u                                                    
+       992,180,188      instructions:u            #    2.62  insn per cycle         
+           242,203      cache-references:u                                          
+             1,244      cache-misses:u            #    0.514 % of all cache refs    
+
+       0.107442805 seconds time elapsed
+
+# started on Thu Feb 25 10:13:24 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,025,320      cycles:u                                                    
+       992,180,146      instructions:u            #    2.62  insn per cycle         
+           240,387      cache-references:u                                          
+               158      cache-misses:u            #    0.066 % of all cache refs    
+
+       0.115802126 seconds time elapsed
+
+# started on Thu Feb 25 10:13:25 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,040,085      cycles:u                                                    
+       992,180,077      instructions:u            #    2.62  insn per cycle         
+           236,972      cache-references:u                                          
+             1,036      cache-misses:u            #    0.437 % of all cache refs    
+
+       0.107171626 seconds time elapsed
+
+# started on Thu Feb 25 10:13:26 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,017,356      cycles:u                                                    
+       992,180,097      instructions:u            #    2.62  insn per cycle         
+           242,414      cache-references:u                                          
+               133      cache-misses:u            #    0.055 % of all cache refs    
+
+       0.107273955 seconds time elapsed
+
+# started on Thu Feb 25 10:13:27 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       378,149,571      cycles:u                                                    
+       992,180,118      instructions:u            #    2.62  insn per cycle         
+           243,384      cache-references:u                                          
+               537      cache-misses:u            #    0.221 % of all cache refs    
+
+       0.114758158 seconds time elapsed
+
+# started on Thu Feb 25 10:13:28 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,303,440      cycles:u                                                    
+       992,180,105      instructions:u            #    2.62  insn per cycle         
+           250,632      cache-references:u                                          
+               864      cache-misses:u            #    0.345 % of all cache refs    
+
+       0.106297709 seconds time elapsed
+
+# started on Thu Feb 25 10:13:29 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,198,382      cycles:u                                                    
+       992,180,059      instructions:u            #    2.62  insn per cycle         
+           243,851      cache-references:u                                          
+               677      cache-misses:u            #    0.278 % of all cache refs    
+
+       0.107772658 seconds time elapsed
+
+# started on Thu Feb 25 10:13:29 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       378,720,899      cycles:u                                                    
+       992,180,118      instructions:u            #    2.62  insn per cycle         
+           232,021      cache-references:u                                          
+               411      cache-misses:u            #    0.177 % of all cache refs    
+
+       0.119495607 seconds time elapsed
+
+# started on Thu Feb 25 10:13:30 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,065,195      cycles:u                                                    
+       992,180,107      instructions:u            #    2.62  insn per cycle         
+           241,519      cache-references:u                                          
+               202      cache-misses:u            #    0.084 % of all cache refs    
+
+       0.107321990 seconds time elapsed
+
+# started on Thu Feb 25 10:13:31 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,192,160      cycles:u                                                    
+       992,180,108      instructions:u            #    2.62  insn per cycle         
+           236,246      cache-references:u                                          
+               551      cache-misses:u            #    0.233 % of all cache refs    
+
+       0.107100615 seconds time elapsed
+
+# started on Thu Feb 25 10:13:32 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       378,720,078      cycles:u                                                    
+       992,180,117      instructions:u            #    2.62  insn per cycle         
+           240,434      cache-references:u                                          
+             1,392      cache-misses:u            #    0.579 % of all cache refs    
+
+       0.116035820 seconds time elapsed
+
+# started on Thu Feb 25 10:13:33 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,143,756      cycles:u                                                    
+       992,180,108      instructions:u            #    2.62  insn per cycle         
+           242,425      cache-references:u                                          
+               153      cache-misses:u            #    0.063 % of all cache refs    
+
+       0.108712655 seconds time elapsed
+
+# started on Thu Feb 25 10:13:34 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,662,890      cycles:u                                                    
+       992,180,060      instructions:u            #    2.61  insn per cycle         
+           244,120      cache-references:u                                          
+             3,170      cache-misses:u            #    1.299 % of all cache refs    
+
+       0.106693494 seconds time elapsed
+
+# started on Thu Feb 25 10:13:34 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       378,499,722      cycles:u                                                    
+       992,180,081      instructions:u            #    2.62  insn per cycle         
+           243,749      cache-references:u                                          
+               669      cache-misses:u            #    0.274 % of all cache refs    
+
+       0.115343235 seconds time elapsed
+
+# started on Thu Feb 25 10:13:35 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       378,259,334      cycles:u                                                    
+       992,180,097      instructions:u            #    2.62  insn per cycle         
+           245,786      cache-references:u                                          
+               978      cache-misses:u            #    0.398 % of all cache refs    
+
+       0.106300270 seconds time elapsed
+
+# started on Thu Feb 25 10:13:36 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,183,158      cycles:u                                                    
+       992,180,070      instructions:u            #    2.62  insn per cycle         
+           245,136      cache-references:u                                          
+               600      cache-misses:u            #    0.245 % of all cache refs    
+
+       0.106530321 seconds time elapsed
+
+# started on Thu Feb 25 10:13:37 2021
+
+
+ Performance counter stats for './matmul512 32 64 1024':
+
+       379,301,748      cycles:u                                                    
+       992,180,171      instructions:u            #    2.62  insn per cycle         
+           255,342      cache-references:u                                          
+               479      cache-misses:u            #    0.188 % of all cache refs    
+
+       0.122285353 seconds time elapsed
+

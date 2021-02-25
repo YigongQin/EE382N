@@ -1,0 +1,240 @@
+# started on Thu Feb 25 09:32:47 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,668,744,361      cycles:u                                                    
+   494,108,587,775      instructions:u            #    2.25  insn per cycle         
+        37,318,403      cache-references:u                                          
+         2,899,640      cache-misses:u            #    7.770 % of all cache refs    
+
+      59.810671098 seconds time elapsed
+
+# started on Thu Feb 25 09:34:48 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,941,553,855      cycles:u                                                    
+   494,108,574,279      instructions:u            #    2.25  insn per cycle         
+        71,675,226      cache-references:u                                          
+         6,500,463      cache-misses:u            #    9.069 % of all cache refs    
+
+      59.963583119 seconds time elapsed
+
+# started on Thu Feb 25 09:36:49 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   220,237,281,413      cycles:u                                                    
+   494,108,574,212      instructions:u            #    2.24  insn per cycle         
+        72,480,882      cache-references:u                                          
+         5,884,945      cache-misses:u            #    8.119 % of all cache refs    
+
+      60.993396783 seconds time elapsed
+
+# started on Thu Feb 25 09:38:50 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,898,315,832      cycles:u                                                    
+   494,108,567,662      instructions:u            #    2.25  insn per cycle         
+        83,342,693      cache-references:u                                          
+         6,397,192      cache-misses:u            #    7.676 % of all cache refs    
+
+      60.715447077 seconds time elapsed
+
+# started on Thu Feb 25 09:40:52 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,873,471,477      cycles:u                                                    
+   494,108,579,034      instructions:u            #    2.25  insn per cycle         
+        61,465,729      cache-references:u                                          
+         4,849,657      cache-misses:u            #    7.890 % of all cache refs    
+
+      60.692168081 seconds time elapsed
+
+# started on Thu Feb 25 09:42:54 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   220,192,397,371      cycles:u                                                    
+   494,108,579,049      instructions:u            #    2.24  insn per cycle         
+        59,818,748      cache-references:u                                          
+         4,928,703      cache-misses:u            #    8.239 % of all cache refs    
+
+      59.895499909 seconds time elapsed
+
+# started on Thu Feb 25 09:44:55 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,783,609,386      cycles:u                                                    
+   494,108,576,356      instructions:u            #    2.25  insn per cycle         
+        66,447,840      cache-references:u                                          
+         5,285,260      cache-misses:u            #    7.954 % of all cache refs    
+
+      60.355096041 seconds time elapsed
+
+# started on Thu Feb 25 09:46:58 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   220,276,333,990      cycles:u                                                    
+   494,108,574,580      instructions:u            #    2.24  insn per cycle         
+        72,369,466      cache-references:u                                          
+         5,919,465      cache-misses:u            #    8.180 % of all cache refs    
+
+      61.489073464 seconds time elapsed
+
+# started on Thu Feb 25 09:49:00 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,846,374,113      cycles:u                                                    
+   494,108,573,325      instructions:u            #    2.25  insn per cycle         
+        72,260,477      cache-references:u                                          
+         5,687,533      cache-misses:u            #    7.871 % of all cache refs    
+
+      60.454565175 seconds time elapsed
+
+# started on Thu Feb 25 09:51:01 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,794,036,332      cycles:u                                                    
+   494,108,575,185      instructions:u            #    2.25  insn per cycle         
+        72,742,062      cache-references:u                                          
+         5,654,837      cache-misses:u            #    7.774 % of all cache refs    
+
+      61.857060521 seconds time elapsed
+
+# started on Thu Feb 25 09:53:04 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,725,479,179      cycles:u                                                    
+   494,108,578,745      instructions:u            #    2.25  insn per cycle         
+        59,336,353      cache-references:u                                          
+         4,777,309      cache-misses:u            #    8.051 % of all cache refs    
+
+      60.198670419 seconds time elapsed
+
+# started on Thu Feb 25 09:55:05 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,730,424,622      cycles:u                                                    
+   494,108,579,316      instructions:u            #    2.25  insn per cycle         
+        60,339,313      cache-references:u                                          
+         5,020,620      cache-misses:u            #    8.321 % of all cache refs    
+
+      60.076669839 seconds time elapsed
+
+# started on Thu Feb 25 09:57:06 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,757,698,869      cycles:u                                                    
+   494,108,580,199      instructions:u            #    2.25  insn per cycle         
+        60,237,024      cache-references:u                                          
+         4,921,475      cache-misses:u            #    8.170 % of all cache refs    
+
+      61.612078501 seconds time elapsed
+
+# started on Thu Feb 25 09:59:08 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   220,347,493,246      cycles:u                                                    
+   494,108,573,603      instructions:u            #    2.24  insn per cycle         
+        72,354,900      cache-references:u                                          
+         5,860,779      cache-misses:u            #    8.100 % of all cache refs    
+
+      60.692088392 seconds time elapsed
+
+# started on Thu Feb 25 10:01:10 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,943,177,620      cycles:u                                                    
+   494,108,574,186      instructions:u            #    2.25  insn per cycle         
+        72,613,074      cache-references:u                                          
+         5,511,447      cache-misses:u            #    7.590 % of all cache refs    
+
+      59.949666119 seconds time elapsed
+
+# started on Thu Feb 25 10:03:13 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   220,224,217,647      cycles:u                                                    
+   494,108,579,159      instructions:u            #    2.24  insn per cycle         
+        59,188,933      cache-references:u                                          
+         4,579,687      cache-misses:u            #    7.737 % of all cache refs    
+
+      60.153460638 seconds time elapsed
+
+# started on Thu Feb 25 10:05:13 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   220,249,303,189      cycles:u                                                    
+   494,108,578,340      instructions:u            #    2.24  insn per cycle         
+        60,718,304      cache-references:u                                          
+         4,743,024      cache-misses:u            #    7.812 % of all cache refs    
+
+      60.548079060 seconds time elapsed
+
+# started on Thu Feb 25 10:07:15 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,681,276,803      cycles:u                                                    
+   494,108,580,639      instructions:u            #    2.25  insn per cycle         
+        60,021,714      cache-references:u                                          
+         4,869,110      cache-misses:u            #    8.112 % of all cache refs    
+
+      61.964982540 seconds time elapsed
+
+# started on Thu Feb 25 10:09:17 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   219,884,741,822      cycles:u                                                    
+   494,108,574,706      instructions:u            #    2.25  insn per cycle         
+        70,455,151      cache-references:u                                          
+         5,524,528      cache-misses:u            #    7.841 % of all cache refs    
+
+      59.856080516 seconds time elapsed
+
+# started on Thu Feb 25 10:11:18 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   220,165,271,648      cycles:u                                                    
+   494,108,574,336      instructions:u            #    2.24  insn per cycle         
+        72,912,546      cache-references:u                                          
+         5,723,957      cache-misses:u            #    7.850 % of all cache refs    
+
+      61.038783544 seconds time elapsed
+

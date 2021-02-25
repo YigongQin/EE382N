@@ -1,0 +1,240 @@
+# started on Thu Feb 25 09:33:47 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,737,644      L1-dcache-load                                              
+     1,460,319,184      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,707,758      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.980951127 seconds time elapsed
+
+# started on Thu Feb 25 09:35:49 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,681,602      L1-dcache-load                                              
+     1,460,908,055      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,707,757      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      59.846526063 seconds time elapsed
+
+# started on Thu Feb 25 09:37:50 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,657,341      L1-dcache-load                                              
+     1,475,800,185      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,707,758      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      59.850962966 seconds time elapsed
+
+# started on Thu Feb 25 09:39:51 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,647,311      L1-dcache-load                                              
+     1,440,238,186      L1-dcache-load-misses     #    0.69% of all L1-dcache hits  
+     2,151,707,757      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      59.885337531 seconds time elapsed
+
+# started on Thu Feb 25 09:41:53 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,634,311      L1-dcache-load                                              
+     1,440,945,204      L1-dcache-load-misses     #    0.69% of all L1-dcache hits  
+     2,151,707,757      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      61.438763100 seconds time elapsed
+
+# started on Thu Feb 25 09:43:55 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,738,737      L1-dcache-load                                              
+     1,439,551,728      L1-dcache-load-misses     #    0.69% of all L1-dcache hits  
+     2,151,707,759      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.418470156 seconds time elapsed
+
+# started on Thu Feb 25 09:45:56 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,734,540      L1-dcache-load                                              
+     1,460,900,714      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,707,758      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      61.414031626 seconds time elapsed
+
+# started on Thu Feb 25 09:48:00 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,639,782      L1-dcache-load                                              
+     1,460,486,228      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,707,761      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      59.844833870 seconds time elapsed
+
+# started on Thu Feb 25 09:50:01 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,649,076      L1-dcache-load                                              
+     1,460,831,775      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,707,761      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      59.849966562 seconds time elapsed
+
+# started on Thu Feb 25 09:52:03 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,698,058      L1-dcache-load                                              
+     1,441,502,136      L1-dcache-load-misses     #    0.69% of all L1-dcache hits  
+     2,151,707,762      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.710481672 seconds time elapsed
+
+# started on Thu Feb 25 09:54:04 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,688,676      L1-dcache-load                                              
+     1,440,246,135      L1-dcache-load-misses     #    0.69% of all L1-dcache hits  
+     2,151,707,759      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.384362885 seconds time elapsed
+
+# started on Thu Feb 25 09:56:06 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,683,724      L1-dcache-load                                              
+     1,441,282,378      L1-dcache-load-misses     #    0.69% of all L1-dcache hits  
+     2,151,707,761      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      59.916332088 seconds time elapsed
+
+# started on Thu Feb 25 09:58:08 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,654,849      L1-dcache-load                                              
+     1,460,701,758      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,707,762      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      59.881603717 seconds time elapsed
+
+# started on Thu Feb 25 10:00:09 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,724,750      L1-dcache-load                                              
+     1,460,484,424      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,707,762      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.469908042 seconds time elapsed
+
+# started on Thu Feb 25 10:02:10 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,722,552      L1-dcache-load                                              
+     1,459,681,567      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,707,758      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      62.301965981 seconds time elapsed
+
+# started on Thu Feb 25 10:04:13 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,733,196      L1-dcache-load                                              
+     1,441,455,973      L1-dcache-load-misses     #    0.69% of all L1-dcache hits  
+     2,151,707,759      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      59.859564091 seconds time elapsed
+
+# started on Thu Feb 25 10:06:14 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,734,272      L1-dcache-load                                              
+     1,439,741,940      L1-dcache-load-misses     #    0.69% of all L1-dcache hits  
+     2,151,707,758      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.289650084 seconds time elapsed
+
+# started on Thu Feb 25 10:08:17 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,658,324      L1-dcache-load                                              
+     1,450,339,048      L1-dcache-load-misses     #    0.69% of all L1-dcache hits  
+     2,151,707,765      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.021405167 seconds time elapsed
+
+# started on Thu Feb 25 10:10:18 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,733,550      L1-dcache-load                                              
+     1,459,892,236      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,707,752      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.476900830 seconds time elapsed
+
+# started on Thu Feb 25 10:12:20 2021
+
+
+ Performance counter stats for './matmul 64 128 1024':
+
+   209,402,686,380      L1-dcache-load                                              
+     1,460,956,479      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,707,753      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.862420653 seconds time elapsed
+
