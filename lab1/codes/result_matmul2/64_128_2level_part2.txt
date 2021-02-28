@@ -1,0 +1,228 @@
+# started on Fri Feb 26 08:53:17 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,688,234      L1-dcache-load                                              
+     1,472,955,710      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,073      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.035566575 seconds time elapsed
+
+# started on Fri Feb 26 08:56:18 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,688,908      L1-dcache-load                                              
+     1,474,951,192      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,074      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.546852236 seconds time elapsed
+
+# started on Fri Feb 26 08:59:20 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,692,543      L1-dcache-load                                              
+     1,398,699,928      L1-dcache-load-misses     #    0.67% of all L1-dcache hits  
+     2,151,702,073      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.540370720 seconds time elapsed
+
+# started on Fri Feb 26 09:02:23 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,689,134      L1-dcache-load                                              
+     1,462,266,271      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,077      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      59.926117859 seconds time elapsed
+
+# started on Fri Feb 26 09:05:29 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,683,544      L1-dcache-load                                              
+     1,475,086,007      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,095      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.427425018 seconds time elapsed
+
+# started on Fri Feb 26 09:08:32 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,692,634      L1-dcache-load                                              
+     1,459,590,717      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,078      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.321872379 seconds time elapsed
+
+# started on Fri Feb 26 09:11:38 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,687,521      L1-dcache-load                                              
+     1,473,530,860      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,074      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      62.219865666 seconds time elapsed
+
+# started on Fri Feb 26 09:14:48 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,688,242      L1-dcache-load                                              
+     1,472,482,306      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,074      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      59.819252604 seconds time elapsed
+
+# started on Fri Feb 26 09:17:58 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,687,558      L1-dcache-load                                              
+     1,474,368,937      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,074      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      59.957073687 seconds time elapsed
+
+# started on Fri Feb 26 09:21:05 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,692,713      L1-dcache-load                                              
+     1,467,351,472      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,077      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      61.217212207 seconds time elapsed
+
+# started on Fri Feb 26 09:24:21 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,695,675      L1-dcache-load                                              
+     1,454,886,568      L1-dcache-load-misses     #    0.69% of all L1-dcache hits  
+     2,151,702,080      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.265864823 seconds time elapsed
+
+# started on Fri Feb 26 09:27:23 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,686,669      L1-dcache-load                                              
+     1,459,753,762      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,090      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      61.331552980 seconds time elapsed
+
+# started on Fri Feb 26 09:30:26 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,681,303      L1-dcache-load                                              
+     1,470,054,276      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,074      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      61.601316696 seconds time elapsed
+
+# started on Fri Feb 26 09:33:34 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,678,252      L1-dcache-load                                              
+     1,463,773,631      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,073      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      61.966615448 seconds time elapsed
+
+# started on Fri Feb 26 09:36:39 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,687,885      L1-dcache-load                                              
+     1,475,136,139      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,073      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      65.466035048 seconds time elapsed
+
+# started on Fri Feb 26 09:39:51 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,599,558      L1-dcache-load                                              
+     1,474,185,831      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,074      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.088112468 seconds time elapsed
+
+# started on Fri Feb 26 09:43:04 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,681,473      L1-dcache-load                                              
+     1,462,382,025      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,078      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.217224463 seconds time elapsed
+
+# started on Fri Feb 26 09:46:05 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,681,598      L1-dcache-load                                              
+     1,465,078,437      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,078      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.494260128 seconds time elapsed
+
+# started on Fri Feb 26 09:49:09 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   209,402,692,873      L1-dcache-load                                              
+     1,475,266,125      L1-dcache-load-misses     #    0.70% of all L1-dcache hits  
+     2,151,702,080      L1-dcache-stores                                            
+   <not supported>      L1-dcache-store-misses                                      
+
+      60.193106575 seconds time elapsed
+

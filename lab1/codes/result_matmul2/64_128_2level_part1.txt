@@ -1,0 +1,240 @@
+# started on Fri Feb 26 08:52:16 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,557,118,030      cycles:u                                                    
+   494,108,404,671      instructions:u            #    2.25  insn per cycle         
+        36,263,158      cache-references:u                                          
+         1,774,810      cache-misses:u            #    4.894 % of all cache refs    
+
+      60.430369087 seconds time elapsed
+
+# started on Fri Feb 26 08:55:18 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,752,817,731      cycles:u                                                    
+   494,108,389,012      instructions:u            #    2.25  insn per cycle         
+        85,163,673      cache-references:u                                          
+         3,414,203      cache-misses:u            #    4.009 % of all cache refs    
+
+      60.081476810 seconds time elapsed
+
+# started on Fri Feb 26 08:58:20 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,707,982,215      cycles:u                                                    
+   494,108,388,372      instructions:u            #    2.25  insn per cycle         
+        86,875,893      cache-references:u                                          
+         3,441,757      cache-misses:u            #    3.962 % of all cache refs    
+
+      60.163730378 seconds time elapsed
+
+# started on Fri Feb 26 09:01:22 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,704,272,716      cycles:u                                                    
+   494,108,392,321      instructions:u            #    2.25  insn per cycle         
+        76,900,094      cache-references:u                                          
+         3,129,356      cache-misses:u            #    4.069 % of all cache refs    
+
+      60.625755421 seconds time elapsed
+
+# started on Fri Feb 26 09:04:23 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,664,241,014      cycles:u                                                    
+   494,108,396,075      instructions:u            #    2.25  insn per cycle         
+        80,094,710      cache-references:u                                          
+         3,431,996      cache-misses:u            #    4.285 % of all cache refs    
+
+      64.981343998 seconds time elapsed
+
+# started on Fri Feb 26 09:07:31 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,733,008,838      cycles:u                                                    
+   494,108,391,872      instructions:u            #    2.25  insn per cycle         
+        77,471,572      cache-references:u                                          
+         3,463,417      cache-misses:u            #    4.471 % of all cache refs    
+
+      60.207252117 seconds time elapsed
+
+# started on Fri Feb 26 09:10:33 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,695,815,336      cycles:u                                                    
+   494,108,396,034      instructions:u            #    2.25  insn per cycle         
+        80,365,398      cache-references:u                                          
+         3,522,178      cache-misses:u            #    4.383 % of all cache refs    
+
+      64.908062392 seconds time elapsed
+
+# started on Fri Feb 26 09:13:42 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   220,627,099,458      cycles:u                                                    
+   494,108,396,266      instructions:u            #    2.24  insn per cycle         
+        79,944,281      cache-references:u                                          
+         3,504,602      cache-misses:u            #    4.384 % of all cache refs    
+
+      65.266509854 seconds time elapsed
+
+# started on Fri Feb 26 09:16:49 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,709,884,711      cycles:u                                                    
+   494,108,402,371      instructions:u            #    2.25  insn per cycle         
+        86,622,181      cache-references:u                                          
+         3,881,916      cache-misses:u            #    4.481 % of all cache refs    
+
+      69.189717595 seconds time elapsed
+
+# started on Fri Feb 26 09:19:59 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   220,160,685,419      cycles:u                                                    
+   494,108,393,983      instructions:u            #    2.24  insn per cycle         
+        86,822,148      cache-references:u                                          
+         3,713,076      cache-misses:u            #    4.277 % of all cache refs    
+
+      65.123546441 seconds time elapsed
+
+# started on Fri Feb 26 09:23:19 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,808,691,898      cycles:u                                                    
+   494,108,409,137      instructions:u            #    2.25  insn per cycle         
+        87,024,019      cache-references:u                                          
+         4,180,689      cache-misses:u            #    4.804 % of all cache refs    
+
+      61.890328455 seconds time elapsed
+
+# started on Fri Feb 26 09:26:22 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,680,353,129      cycles:u                                                    
+   494,108,392,722      instructions:u            #    2.25  insn per cycle         
+        75,805,537      cache-references:u                                          
+         2,915,594      cache-misses:u            #    3.846 % of all cache refs    
+
+      60.544951183 seconds time elapsed
+
+# started on Fri Feb 26 09:29:26 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   220,154,149,825      cycles:u                                                    
+   494,108,389,498      instructions:u            #    2.24  insn per cycle         
+        84,037,803      cache-references:u                                          
+         3,354,780      cache-misses:u            #    3.992 % of all cache refs    
+
+      60.059151489 seconds time elapsed
+
+# started on Fri Feb 26 09:32:33 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   220,084,357,924      cycles:u                                                    
+   494,108,391,041      instructions:u            #    2.25  insn per cycle         
+        77,908,077      cache-references:u                                          
+         3,086,145      cache-misses:u            #    3.961 % of all cache refs    
+
+      59.893367756 seconds time elapsed
+
+# started on Fri Feb 26 09:35:39 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   220,170,537,652      cycles:u                                                    
+   494,108,388,388      instructions:u            #    2.24  insn per cycle         
+        87,013,763      cache-references:u                                          
+         3,533,390      cache-misses:u            #    4.061 % of all cache refs    
+
+      60.049400849 seconds time elapsed
+
+# started on Fri Feb 26 09:38:45 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,910,073,471      cycles:u                                                    
+   494,108,394,642      instructions:u            #    2.25  insn per cycle         
+        85,379,653      cache-references:u                                          
+         3,538,801      cache-misses:u            #    4.145 % of all cache refs    
+
+      65.230815985 seconds time elapsed
+
+# started on Fri Feb 26 09:41:52 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,879,071,216      cycles:u                                                    
+   494,108,420,479      instructions:u            #    2.25  insn per cycle         
+        36,910,168      cache-references:u                                          
+         1,827,352      cache-misses:u            #    4.951 % of all cache refs    
+
+      71.411693441 seconds time elapsed
+
+# started on Fri Feb 26 09:45:05 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,757,313,522      cycles:u                                                    
+   494,108,390,444      instructions:u            #    2.25  insn per cycle         
+        80,531,745      cache-references:u                                          
+         3,222,674      cache-misses:u            #    4.002 % of all cache refs    
+
+      59.813435323 seconds time elapsed
+
+# started on Fri Feb 26 09:48:08 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,775,291,259      cycles:u                                                    
+   494,108,389,330      instructions:u            #    2.25  insn per cycle         
+        85,146,376      cache-references:u                                          
+         3,651,307      cache-misses:u            #    4.288 % of all cache refs    
+
+      60.421528860 seconds time elapsed
+
+# started on Fri Feb 26 09:51:10 2021
+
+
+ Performance counter stats for './matmul2level 64 128':
+
+   219,745,232,542      cycles:u                                                    
+   494,108,392,797      instructions:u            #    2.25  insn per cycle         
+        86,516,716      cache-references:u                                          
+         3,778,748      cache-misses:u            #    4.368 % of all cache refs    
+
+      63.887532805 seconds time elapsed
+
