@@ -10,9 +10,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 // define the matrix dimensions A is MxP, B is PxN, and C is MxN
-#define M 4096
-#define N 4096
-#define P 4096
+#define M 512
+#define N 512
+#define P 512
 
 // L1 cache size 32KB   BSIZE1 <= 32 = 52
 // L2 cache size 1MB    BSIZE2 <= 256 = 295

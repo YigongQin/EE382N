@@ -23,7 +23,7 @@
 
 int BSIZE1;
 int BSIZE2;
-int BSIZE3;
+// int BSIZE3;
 
 // calculate C = AxB
 void matmul(float **A, float **B, float **C) {
@@ -73,6 +73,7 @@ void matmul_aware_recur(float **A, float **B, float **C, int i0, int i1, int j0,
     {
       int bsize;
       // check locate to which memory hierarchy
+      // if case 3: M > max cache size such that we need to split the matrix to make sure L3 can hold
       switch (level)
       {
       case 1:
@@ -80,9 +81,6 @@ void matmul_aware_recur(float **A, float **B, float **C, int i0, int i1, int j0,
         break;
       case 2:
         bsize = BSIZE2;
-        break;
-      case 3:
-        bsize = BSIZE3;
         break;
       default:
         break;
@@ -113,13 +111,9 @@ void matmul_aware(float **A, float **B, float **C)
     {
         level = 1;
     }
-    else if(M <= BSIZE3)
-    {
-        level = 2;
-    }
     else
     {
-        level = 3;
+        level = 2;
     }
     // printf("level:%d\n", level);
 
@@ -150,7 +144,7 @@ int main(int argc, char** argv) {
   // obtain the block size for different memory
   BSIZE1 = atoi(argv[1]);
   BSIZE2 = atoi(argv[2]);
-  BSIZE3 = atoi(argv[3]);
+  // BSIZE3 = atoi(argv[3]);
 
   // printf("BSIZE1 = %d, BSIZE2 = %d, BSIZE3 = %d", BSIZE1, BSIZE2, BSIZE3);
   create_matrix(&A, M, P);
