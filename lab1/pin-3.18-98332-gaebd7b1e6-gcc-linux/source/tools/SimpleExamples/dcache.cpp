@@ -43,12 +43,18 @@ KNOB<UINT32> KnobThresholdHit(KNOB_MODE_WRITEONCE , "pintool",
    "rh", "100", "only report memops with hit count above threshold");
 KNOB<UINT32> KnobThresholdMiss(KNOB_MODE_WRITEONCE, "pintool",
    "rm","100", "only report memops with miss count above threshold");
-KNOB<UINT32> KnobCacheSize(KNOB_MODE_WRITEONCE, "pintool",
-    "c","32", "cache size in kilobytes");
-KNOB<UINT32> KnobLineSize(KNOB_MODE_WRITEONCE, "pintool",
-    "b","32", "cache block size in bytes");
-KNOB<UINT32> KnobAssociativity(KNOB_MODE_WRITEONCE, "pintool",
-    "a","4", "cache associativity (1 for direct mapped)");
+KNOB<UINT32> KnobCacheSize_L1(KNOB_MODE_WRITEONCE, "pintool",
+    "c1","32", "L1 cache size in kilobytes");
+KNOB<UINT32> KnobLineSize_L1(KNOB_MODE_WRITEONCE, "pintool",
+    "b1","32", "L1 cache block size in bytes");
+KNOB<UINT32> KnobAssociativity_L1(KNOB_MODE_WRITEONCE, "pintool",
+    "a1","4", "L1 cache associativity (1 for direct mapped)");
+KNOB<UINT32> KnobCacheSize_L2(KNOB_MODE_WRITEONCE, "pintool",
+    "c2","2048", "L2 cache size in kilobytes");
+KNOB<UINT32> KnobLineSize_L2(KNOB_MODE_WRITEONCE, "pintool",
+    "b2","64", "L2 cache block size in bytes");
+KNOB<UINT32> KnobAssociativity_L2(KNOB_MODE_WRITEONCE, "pintool",
+    "a2","16", "L2 cache associativity (1 for direct mapped)");
 
 /* ===================================================================== */
 /* Print Help Message                                                    */
@@ -79,7 +85,7 @@ namespace DL1
 }
 namespace DL2
 {
-    const UINT32 max_sets = KILO; // cacheSize / (lineSize * associativity);
+    const UINT32 max_sets = 32*KILO; // cacheSize / (lineSize * associativity);
     const UINT32 max_associativity = 256; // associativity;
     const CACHE_ALLOC::STORE_ALLOCATION allocation = CACHE_ALLOC::STORE_ALLOCATE;
 
@@ -375,13 +381,13 @@ int main(int argc, char *argv[])
     outFile.open(KnobOutputFile.Value().c_str());
 
     dl1 = new DL1::CACHE("L1 Data Cache", 
-                         KnobCacheSize.Value() * KILO,
-                         KnobLineSize.Value(),
-                         KnobAssociativity.Value());
+                         KnobCacheSize_L1.Value() * KILO,
+                         KnobLineSize_L1.Value(),
+                         KnobAssociativity_L1.Value());
     dl2 = new DL2::CACHE("L2 Data Cache", 
-                         KnobCacheSize.Value() * KILO,
-                         KnobLineSize.Value(),
-                         KnobAssociativity.Value());
+                         KnobCacheSize_L2.Value() * KILO,
+                         KnobLineSize_L2.Value(),
+                         KnobAssociativity_L2.Value());
     
     profile.SetKeyName("iaddr          ");
     profile.SetCounterName("dcache:miss        dcache:hit");
