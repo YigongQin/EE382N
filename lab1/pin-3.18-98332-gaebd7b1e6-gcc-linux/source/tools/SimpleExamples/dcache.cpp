@@ -87,7 +87,7 @@ namespace DL2
 }
 
 DL1::CACHE* dl1 = NULL;
-DL1::CACHE* dl2 = NULL;
+DL2::CACHE* dl2 = NULL;
 
 typedef enum
 {
