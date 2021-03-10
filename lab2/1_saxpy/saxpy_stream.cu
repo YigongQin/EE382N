@@ -50,22 +50,31 @@ saxpyCuda(long total_elems, float alpha, float* xarray, float* yarray, float* re
     // Did
     size_t array_size = total_elems * sizeof(float);
     size_t bytesPerPartition = array_size / partitions;
+    size_t dataChunkSize = total_elems / partitions;
     cudaMalloc((void**)&device_x, array_size);
     cudaMalloc((void**)&device_y, array_size);
     cudaMalloc((void**)&device_result, array_size);
 
     // start timing after allocation of device memory.
     double startTime = CycleTimer::currentSeconds();
+    
+    // create streams
+    cudaStream_t stream[partitions];
+    for (int i=0; i <partitions; i++){
+      cudaStreamCreate(&stream[i]);
+    }
 
     for (int i=0; i<partitions; i++) {
   
         //
         // TODO: copy input arrays to the GPU using cudaMemcpy
         // Did
-        size_t offset = i * total_elems / partitions;
+        size_t offset = i * dataChunkSize;
         // printf("offset%d\n", offset);
-        cudaMemcpy(&device_x[offset], &xarray[offset], bytesPerPartition, cudaMemcpyHostToDevice);
-        cudaMemcpy(&device_y[offset], &yarray[offset], bytesPerPartition, cudaMemcpyHostToDevice);
+        // cudaMemcpy(&device_x[offset], &xarray[offset], bytesPerPartition, cudaMemcpyHostToDevice);
+        // cudaMemcpy(&device_y[offset], &yarray[offset], bytesPerPartition, cudaMemcpyHostToDevice);
+        cudaMemcpyAsync(&device_x[offset], &xarray[offset], bytesPerPartition, cudaMemcpyHostToDevice, stream[i]);
+        cudaMemcpyAsync(&device_y[offset], &yarray[offset], bytesPerPartition, cudaMemcpyHostToDevice, stream[i]);
         
         //
         // TODO: insert time here to begin timing only the kernel
@@ -77,7 +86,7 @@ saxpyCuda(long total_elems, float alpha, float* xarray, float* yarray, float* re
         dim3 gridSize ((total_elems / partitions + blockSize.x - 1) / blockSize.x); // impl ceil
 
         // run saxpy_kernel on the GPU
-        saxpy_kernel<<<gridSize,blockSize>>>((i+1)*(total_elems / partitions), alpha, &device_x[offset], &device_y[offset], &device_result[offset]);
+        saxpy_kernel<<<gridSize, blockSize, 0, stream[i]>>>((i+1)*(total_elems / partitions), alpha, &device_x[offset], &device_y[offset], &device_result[offset]);
     
         //
         // TODO: insert timer here to time only the kernel.  Since the
@@ -99,10 +108,12 @@ saxpyCuda(long total_elems, float alpha, float* xarray, float* yarray, float* re
         //
         // TODO: copy result from GPU using cudaMemcpy
         // Did
-        cudaMemcpy(&resultarray[offset], &device_result[offset], bytesPerPartition, cudaMemcpyDeviceToHost);
+        cudaMemcpyAsync(&resultarray[offset], &device_result[offset], bytesPerPartition, cudaMemcpyDeviceToHost, stream[i]);
+        // cudaMemcpy(&resultarray[offset], &device_result[offset], bytesPerPartition, cudaMemcpyDeviceToHost);
         
     }
-
+    
+    // cudaDeviceSynchronize();
     // end timing after result has been copied back into host memory.
     // The time elapsed between startTime and endTime is the total
     // time to copy data to the GPU, run the kernel, and copy the

@@ -1,10 +1,10 @@
-EXECUTABLE := cudaSaxpy
-# EXECUTABLE_UVM := cudaSaxpyUvm
+# EXECUTABLE := cudaSaxpy
+EXECUTABLE_UVM := cudaSaxpyUvm
 # EXECUTABLE_STREAM := cudaSaxpyStream
-CU_FILES   := saxpy_basic.cu
+CU_FILES   := saxpy_uvm.cu
 # CU_FILES   := saxpy_basic.cu saxpy_uvm.cu saxpy_stream.cu 
 CU_DEPS    := 
-CC_FILES   := main.cpp
+CC_FILES   := main_uvm.cpp
 
 DEBUG_ENABLED=0
 UVM_ENABLED=0
@@ -51,9 +51,9 @@ NVCC_FLAGS=-O3 -m64 $(GENCODE_FLAGS) $(INC_FLAGS)
 
 CXXFLAGS += -I$(CUDA_PATH)/include/ -L$(CUDA_PATH)/lib64/ -lcudart
 
-COMMON_OBJS=$(OBJDIR)/main.o 
-OBJS_BASIC=$(COMMON_OBJS) $(OBJDIR)/saxpy_basic.o 
-# OBJS_UVM=$(COMMON_OBJS) $(OBJDIR)/saxpy_uvm.o 
+COMMON_OBJS=$(OBJDIR)/main_uvm.o 
+# OBJS_BASIC=$(COMMON_OBJS) $(OBJDIR)/saxpy_basic.o 
+OBJS_UVM=$(COMMON_OBJS) $(OBJDIR)/saxpy_uvm.o 
 # OBJS_STREAM=$(COMMON_OBJS) $(OBJDIR)/saxpy_stream.o 
 
 .PHONY: dirs clean
@@ -66,11 +66,11 @@ dirs:
 clean:
 		rm -rf $(OBJDIR) *~ $(EXECUTABLE) $(EXECUTABLE_UVM) $(EXECUTABLE_STREAM)
 
-$(EXECUTABLE): dirs $(OBJS_BASIC)
-		$(CXX) $(CXXFLAGS) -o $@ $(OBJS_BASIC) $(NVCC_LDFLAGS)
+# $(EXECUTABLE): dirs $(OBJS_BASIC)
+		# $(CXX) $(CXXFLAGS) -o $@ $(OBJS_BASIC) $(NVCC_LDFLAGS)
 
-# $(EXECUTABLE_UVM): dirs $(OBJS_UVM)
-# 		$(CXX) $(CXXFLAGS) -o $@ $(OBJS_UVM) $(NVCC_LDFLAGS)
+$(EXECUTABLE_UVM): dirs $(OBJS_UVM)
+		$(CXX) $(CXXFLAGS) -o $@ $(OBJS_UVM) $(NVCC_LDFLAGS)
 
 # $(EXECUTABLE_STREAM): dirs $(OBJS_STREAM)
 # 		$(CXX) $(CXXFLAGS) -o $@ $(OBJS_STREAM) $(NVCC_LDFLAGS)

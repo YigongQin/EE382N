@@ -2,7 +2,7 @@
  * @Author: Hanqing Zhu
  * @Date:   2021-03-10 05:48:41
  * @Last Modified by:   Hanqing Zhu
- * @Last Modified time: 2021-03-10 09:12:48
+ * @Last Modified time: 2021-03-10 09:18:41
  */
 #include <stdlib.h>
 #include <stdio.h>
@@ -105,15 +105,15 @@ int main(int argc, char** argv)
     long nBytes = total_elems * sizeof(float);
     // printf("Check num of bytes", nBytes);
     //
-    // TODO: allocate host-side memory
-    xarray = (float*)malloc(nBytes);
-    yarray = (float*)malloc(nBytes);
-    resultarray = (float*)malloc(nBytes);
+    // // TODO: allocate host-side memory
+    // xarray = (float*)malloc(nBytes);
+    // yarray = (float*)malloc(nBytes);
+    // resultarray = (float*)malloc(nBytes);
 
-    // // Used in UVM where we initialize the matrix in global memory
-    // cudaMallocManaged((void**)&xarray, nBytes);
-    // cudaMallocManaged((void**)&yarray, nBytes);
-    // cudaMallocManaged((void**)&resultarray, nBytes);
+    // Used in UVM where we initialize the matrix in global memory
+    cudaMallocManaged((void**)&xarray, nBytes);
+    cudaMallocManaged((void**)&yarray, nBytes);
+    cudaMallocManaged((void**)&resultarray, nBytes);
 
     // Used in Stream as we need pinned memory such that we can enable overlapping a data transfer operations
     // https://stackoverflow.com/questions/23133203/cudamallochost-vs-malloc-for-better-performance-shows-no-difference
@@ -175,15 +175,15 @@ int main(int argc, char** argv)
     }
 
     //
-    // TODO: deallocate host-side memory
-    free(xarray);
-    free(yarray);
-    free(resultarray);
+    // // TODO: deallocate host-side memory
+    // free(xarray);
+    // free(yarray);
+    // free(resultarray);
 
-    // // use this for UVM to free memory
-    // cudaFree(xarray);
-    // cudaFree(yarray);
-    // cudaFree(resultarray);
+    // use this for UVM to free memory
+    cudaFree(xarray);
+    cudaFree(yarray);
+    cudaFree(resultarray);
 
     // // Used in Stream as we need pinned memory such that we can enable overlapping a data transfer operations
     // // https://stackoverflow.com/questions/23133203/cudamallochost-vs-malloc-for-better-performance-shows-no-difference

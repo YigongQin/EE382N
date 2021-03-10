@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -J saxpy           # job name
-#SBATCH -o saxpybasic.o%j       # output and error file name (%j expands to jobID)
+#SBATCH -o saxpystream.o%j       # output and error file name (%j expands to jobID)
 #SBATCH -N 1               # total number of node
 #SBATCH -n 1               # total number of mpi tasks requested
 #SBATCH -p gtx             # queue (partition) -- normal, development, etc.
@@ -11,4 +11,4 @@
 #SBATCH -A EE382N-20
 module load gcc
 module load cuda
-./cudaSaxpy -n 500000000 -p 1 -i 4
+./cudaSaxpyStream -n 500000000 -p 4 -i 4
