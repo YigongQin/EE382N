@@ -1,20 +1,13 @@
-/*
- * @Author: Hanqing Zhu
- * @Date:   2021-03-10 05:48:41
- * @Last Modified by:   Hanqing Zhu
- * @Last Modified time: 2021-03-11 02:07:47
- */
 #include <stdlib.h>
 #include <stdio.h>
 #include <getopt.h>
 #include <string>
 #include <vector>
 #include <time.h>
-#include <cuda.h> // add cuda support
-#include <cuda_runtime.h>
-#include <driver_functions.h>
 #include "saxpy.h"
 #include "common.h"
+#include <cuda.h>
+#include <cuda_runtime_api.h>
 double timeKernelAvg = 0.0;
 double timeCopyH2DAvg = 0.0;
 double timeCopyD2HAvg = 0.0;
@@ -22,7 +15,6 @@ double totalTimeAvg = 0.0;
 
 // return GB/s
 float toBW(long bytes, float sec) {
-    // printf("check bytes %d and sec %f\n", bytes, sec);
     return static_cast<float>(bytes) / (1024. * 1024. * 1024.) / sec;
 }
 
@@ -101,57 +93,39 @@ int main(int argc, char** argv)
     float* xarray      = NULL;
     float* yarray      = NULL;
     float* resultarray = NULL;
-
-    long nBytes = total_elems * sizeof(float);
-    // printf("Check num of bytes", nBytes);
     //
-    // // TODO: allocate host-side memory
-    // xarray = (float*)malloc(nBytes);
-    // yarray = (float*)malloc(nBytes);
-    // resultarray = (float*)malloc(nBytes);
-
-    // // Used in UVM where we initialize the matrix in global memory
-    // cudaMallocManaged((void**)&xarray, nBytes);
-    // cudaMallocManaged((void**)&yarray, nBytes);
-    // cudaMallocManaged((void**)&resultarray, nBytes);
-
-    // Used in Stream as we need pinned memory such that we can enable overlapping a data transfer operations
-    // https://stackoverflow.com/questions/23133203/cudamallochost-vs-malloc-for-better-performance-shows-no-difference
-    cudaMallocHost((void**)&xarray, nBytes);
-    cudaMallocHost((void**)&yarray, nBytes);
-    cudaMallocHost((void**)&resultarray, nBytes);
+    // TODO: allocate host-side memory
+    //
+    cudaMallocHost((void**)&xarray, total_elems*sizeof(float));
+    cudaMallocHost((void**)&yarray, total_elems*sizeof(float));
+    cudaMallocHost((void**)&resultarray, total_elems*sizeof(float));
 
     //
     // TODO: initialize input arrays
     //
-    for (long i = 0; i < total_elems; i++){
-        xarray[i] = 1.0f;
-        yarray[i] = 2.0f;
-    }
-    // for (long i = 0; i < 10; i++) {
-    //     printf("check: xarray = %f\n", xarray[i]);
-    //     printf("check: yarray = %f\n", yarray[i]);
+    // for (long i=0; i<total_elems; i++) {
+    //     xarray[i] = 1.0f;
+    //     yarray[i] = 2.0f;
     // }
 
-/*
     srand(time(NULL));
     for (long i=0; i<total_elems; i++) {
         xarray[i] = rand() / 100;
         yarray[i] = rand() / 100;
     }
-*/
+
 
     printCudaInfo();
 
-    for (int i=0; i<iterations; i++) { 
-        saxpyCuda(total_elems, alpha, xarray, yarray, resultarray, partitions);
-    }
+
+    saxpyCuda(total_elems, alpha, xarray, yarray, resultarray, partitions);
+
     totalTimeAvg /= iterations;
     timeKernelAvg /= iterations;
     timeCopyH2DAvg /= iterations;
     timeCopyD2HAvg /= iterations;
 
-    const long totalBytes = sizeof(float) * 3 * total_elems;
+    const int totalBytes = sizeof(float) * 3 * total_elems;
     printf("Overall time : %8.3f ms [%8.3f GB/s ]\n", 1000.f * totalTimeAvg, toBW(totalBytes, totalTimeAvg));
     printf("GPU Kernel   : %8.3f ms [%8.3f Ops/s]\n", 1000.f * timeKernelAvg, toBW(totalBytes/3, timeKernelAvg));
     printf("Copy CPU->GPU: %8.3f ms [%8.3f GB/s ]\n", 1000.f * timeCopyH2DAvg, toBW(totalBytes*2/3, timeCopyH2DAvg));
@@ -165,31 +139,14 @@ int main(int argc, char** argv)
             printf("Test succeeded\n");
         } else {
             printf("Test failed\n");
-            // for (long i = 0; i < 10; i++) {
-            //     printf("check: xarray = %f\n", xarray[i]);
-            //     printf("check: yarray = %f\n", yarray[i]);
-            //     printf("check: resultrefer = %f\n", resultrefer[i]);
-            //     printf("check: resultarray = %f\n", resultarray[i]);
-            // }
         }
     }
 
     //
     // TODO: deallocate host-side memory
-    // free(xarray);
-    // free(yarray);
-    // free(resultarray);
-
-    // // use this for UVM to free memory
-    // cudaFree(xarray);
-    // cudaFree(yarray);
-    // cudaFree(resultarray);
-
-    // Used in Stream as we need pinned memory such that we can enable overlapping a data transfer operations
-    // https://stackoverflow.com/questions/23133203/cudamallochost-vs-malloc-for-better-performance-shows-no-difference
+    //
     cudaFreeHost(xarray);
     cudaFreeHost(yarray);
     cudaFreeHost(resultarray);
- 
     return 0;
 }
