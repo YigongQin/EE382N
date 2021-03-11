@@ -1,0 +1,206 @@
+[siyuan@siyuan-p50 1_saxpy]$ ./cudaSaxpy -n 250000000 -p 1 -i 4
+---------------------------------------------------------
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+Overall time :  496.027 ms [  -2.431 GB/s ]
+GPU Kernel   :   42.400 ms [  -9.481 Ops/s]
+Copy CPU->GPU:  234.144 ms [   2.261 GB/s ]
+Copy CPU<-GPU:  215.746 ms [  -1.863 GB/s ]
+check_saxpy
+Test succeeded
+[siyuan@siyuan-p50 1_saxpy]$ ./cudaSaxpy -n 50000000 -p 1 -i 4
+---------------------------------------------------------
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+Overall time :  101.967 ms [   5.480 GB/s ]
+GPU Kernel   :    8.610 ms [  21.633 Ops/s]
+Copy CPU->GPU:   46.216 ms [   8.061 GB/s ]
+Copy CPU<-GPU:   47.127 ms [   3.952 GB/s ]
+check_saxpy
+Test succeeded
+
+[siyuan@siyuan-p50 1_saxpy]$ ./cudaSaxpyUvm -n 250000000 -p 1 -i 4
+arrays allocated
+---------------------------------------------------------
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+Overall time :   86.877 ms [ -13.882 GB/s ]
+GPU Kernel   :   82.857 ms [  -4.852 Ops/s]
+Copy CPU->GPU:    0.000 ms [     inf GB/s ]
+Copy CPU<-GPU:    0.000 ms [    -inf GB/s ]
+check_saxpy
+Test succeeded
+[siyuan@siyuan-p50 1_saxpy]$ ./cudaSaxpyUvm -n 50000000 -p 1 -i 4
+arrays allocated
+---------------------------------------------------------
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+Overall time :   20.598 ms [  27.128 GB/s ]
+GPU Kernel   :   16.989 ms [  10.964 Ops/s]
+Copy CPU->GPU:    0.000 ms [     inf GB/s ]
+Copy CPU<-GPU:    0.000 ms [     inf GB/s ]
+check_saxpy
+Test succeeded
+
+
+
+[siyuan@siyuan-p50 1_saxpy]$ ./cudaSaxpyStream -n 250000000 -p 1 -i 4
+---------------------------------------------------------
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+11702.198082 1 
+11702.198153 2 
+11702.198246 3 
+11702.198261 
+Overall time :   88.677 ms [ -13.600 GB/s ]
+GPU Kernel   :    0.023 ms [-17264.797 Ops/s]
+Copy CPU->GPU:    0.018 ms [29588.613 GB/s ]
+Copy CPU<-GPU:    0.004 ms [-111348.453 GB/s ]
+check_saxpy
+Test succeeded
+[siyuan@siyuan-p50 1_saxpy]$ ./cudaSaxpyStream -n 250000000 -p 2 -i 4
+---------------------------------------------------------
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+11897.353454 11897.353503 1 
+11897.353484 11897.353508 2 
+11897.353499 11897.353511 3 
+11897.353503 11897.353513 
+Overall time :   65.483 ms [ -18.417 GB/s ]
+GPU Kernel   :    0.004 ms [-90704.039 Ops/s]
+Copy CPU->GPU:    0.009 ms [60205.648 GB/s ]
+Copy CPU<-GPU:    0.002 ms [-266300.062 GB/s ]
+check_saxpy
+Test succeeded
+[siyuan@siyuan-p50 1_saxpy]$ ./cudaSaxpyStream -n 250000000 -p 4 -i 4
+---------------------------------------------------------
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+11920.449104 11920.449165 11920.449180 11920.449193 1 
+11920.449139 11920.449173 11920.449186 11920.449198 2 
+11920.449159 11920.449177 11920.449190 11920.449203 3 
+11920.449165 11920.449180 11920.449193 11920.449205 
+Overall time :   65.383 ms [ -18.446 GB/s ]
+GPU Kernel   :    0.008 ms [-48892.691 Ops/s]
+Copy CPU->GPU:    0.013 ms [39364.734 GB/s ]
+Copy CPU<-GPU:    0.004 ms [-109413.586 GB/s ]
+check_saxpy
+Test succeeded
+[siyuan@siyuan-p50 1_saxpy]$ ./cudaSaxpyStream -n 250000000 -p 8 -i 4
+---------------------------------------------------------
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+11936.925244 11936.925285 11936.925295 11936.925303 11936.925311 11936.925319 11936.925326 11936.925333 1 
+11936.925268 11936.925290 11936.925299 11936.925307 11936.925315 11936.925322 11936.925329 11936.925336 2 
+11936.925281 11936.925294 11936.925302 11936.925309 11936.925318 11936.925325 11936.925332 11936.925338 3 
+11936.925285 11936.925295 11936.925303 11936.925311 11936.925319 11936.925326 11936.925333 11936.925340 
+Overall time :   65.158 ms [ -18.509 GB/s ]
+GPU Kernel   :    0.008 ms [-51600.906 Ops/s]
+Copy CPU->GPU:    0.012 ms [42984.426 GB/s ]
+Copy CPU<-GPU:    0.004 ms [-104007.961 GB/s ]
+check_saxpy
+Test succeeded
+
+[siyuan@siyuan-p50 1_saxpy]$ ./cudaSaxpyStream -n 50000000 -p 1 -i 4
+---------------------------------------------------------
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+12213.812886 1 
+12213.812909 2 
+12213.812922 3 
+12213.812926 
+Overall time :   19.099 ms [  29.257 GB/s ]
+GPU Kernel   :    0.003 ms [54951.520 Ops/s]
+Copy CPU->GPU:    0.006 ms [64246.184 GB/s ]
+Copy CPU<-GPU:    0.001 ms [190965.141 GB/s ]
+check_saxpy
+Test succeeded
+[siyuan@siyuan-p50 1_saxpy]$ ./cudaSaxpyStream -n 50000000 -p 2 -i 4
+---------------------------------------------------------
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+12222.419664 12222.419703 1 
+12222.419684 12222.419708 2 
+12222.419699 12222.419711 3 
+12222.419703 12222.419713 
+Overall time :   16.366 ms [  34.144 GB/s ]
+GPU Kernel   :    0.004 ms [42902.883 Ops/s]
+Copy CPU->GPU:    0.006 ms [58657.102 GB/s ]
+Copy CPU<-GPU:    0.001 ms [125936.258 GB/s ]
+check_saxpy
+Test succeeded
+[siyuan@siyuan-p50 1_saxpy]$ ./cudaSaxpyStream -n 50000000 -p 4 -i 4
+---------------------------------------------------------
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+12227.577223 12227.577262 12227.577272 12227.577280 1 
+12227.577245 12227.577267 12227.577276 12227.577284 2 
+12227.577258 12227.577270 12227.577278 12227.577287 3 
+12227.577262 12227.577272 12227.577280 12227.577288 
+Overall time :   16.452 ms [  33.965 GB/s ]
+GPU Kernel   :    0.005 ms [35263.242 Ops/s]
+Copy CPU->GPU:    0.009 ms [42200.047 GB/s ]
+Copy CPU<-GPU:    0.002 ms [81181.398 GB/s ]
+check_saxpy
+Test succeeded
+[siyuan@siyuan-p50 1_saxpy]$ ./cudaSaxpyStream -n 50000000 -p 8 -i 4
+---------------------------------------------------------
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+12232.588466 12232.588506 12232.588518 12232.588526 12232.588535 12232.588544 12232.588552 12232.588560 1 
+12232.588489 12232.588512 12232.588521 12232.588530 12232.588539 12232.588547 12232.588555 12232.588563 2 
+12232.588502 12232.588516 12232.588524 12232.588533 12232.588542 12232.588550 12232.588558 12232.588565 3 
+12232.588506 12232.588518 12232.588526 12232.588535 12232.588544 12232.588552 12232.588560 12232.588567 
+Overall time :   17.273 ms [  32.350 GB/s ]
+GPU Kernel   :    0.008 ms [22392.219 Ops/s]
+Copy CPU->GPU:    0.013 ms [29365.902 GB/s ]
+Copy CPU<-GPU:    0.004 ms [43787.320 GB/s ]
+check_saxpy
