@@ -1,0 +1,25 @@
+---------------------------------------------------------
+Found 4 CUDA devices
+Device 0: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+Device 1: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+Device 2: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+Device 3: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+---------------------------------------------------------
+Overall time :  975.847 ms [   5.726 GB/s ]
+GPU Kernel   :   16.634 ms [ 111.976 Ops/s]
+Copy CPU->GPU:  556.623 ms [   6.693 GB/s ]
+Copy CPU<-GPU:  402.563 ms [   4.627 GB/s ]
+check_saxpy
+Test succeeded
