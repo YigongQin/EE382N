@@ -153,6 +153,8 @@ double cudaScan(int* inarray, int* end, int* resultarray)
     cudaMemcpy(resultarray, device_result, (end - inarray) * sizeof(int),
                cudaMemcpyDeviceToHost);
 
+    cudaFree(device_input);
+    cudaFree(device_result);
     //for (int i = 0; i < rounded_length; i++){printf("%d ",resultarray[i]);}
     return overallDuration;
 }
