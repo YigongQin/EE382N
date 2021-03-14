@@ -11,7 +11,7 @@ UVM_ENABLED=0
 ###########################################################
 
 ARCH=$(shell uname | sed -e 's/-.*//g')
-CUDA_PATH ?= $(TACC_CUDA_PATH)
+CUDA_PATH=$(TACC_CUDA_DIR)
 # CUDA_PATH=$(CUDA_DIR)
 OBJDIR=objs
 INC_FLAGS=-I../common
