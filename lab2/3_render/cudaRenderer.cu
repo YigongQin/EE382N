@@ -14,6 +14,19 @@
 #include "sceneLoader.h"
 #include "util.h"
 
+
+
+static inline int nextPow2(int n)
+{
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n++;
+    return n;
+}
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -49,6 +62,33 @@ __constant__ float  cuConstNoise1DValueTable[256];
 // color ramp table needed for the color ramp lookup shader
 #define COLOR_MAP_SIZE 5
 __constant__ float  cuConstColorRamp[COLOR_MAP_SIZE][3];
+
+
+__global__ void
+upsweep(int N, int twod, int twod1, int* output) {
+
+    // upsweep phase of exclusive scan
+
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (twod==N){
+          if (index==N-1){output[index]=0;}}
+    else{
+      if (index < N && (index % twod1 ==0) )
+       output[index+ twod1 -1] += output[index+twod -1];}
+}
+
+__global__ void
+downsweep(int N, int twod, int twod1, int* output) {
+
+    // downsweep phase of exclusive scan
+    
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (index < N && (index % twod1 ==0) ){
+       int t  = output[index+twod -1];
+       output[index+ twod -1] = output[index+ twod1 -1];;
+       output[index+ twod1 -1] += t;}
+}
 
 
 // including parts of the CUDA code from external files to keep this
@@ -630,6 +670,27 @@ CudaRenderer::advanceAnimation() {
     }
     cudaDeviceSynchronize();
 }
+
+void exclusive_scan( int length, int* device_result)
+{
+
+    // length here have been rounded to power of two, device_result is device array to be scanned. 
+    int blocksize = 256;
+    int num_blocks = (length+blocksize-1)/blocksize;
+    printf("block size = %d, number of blocks %d \n",blocksize,num_blocks);
+    for (int twod =1; twod <=length; twod *=2){
+        int twod1 = twod*2;
+            upsweep<<< num_blocks, blocksize  >>>(length, twod, twod1, device_result);
+    }
+    //device_result[length-1]=0;
+    for (int twod = length/2; twod >=1; twod /=2){
+        int twod1 = twod*2;
+            downsweep<<< num_blocks, blocksize  >>>(length, twod, twod1, device_result);
+    }
+
+
+}
+
 
 void
 CudaRenderer::render() {
