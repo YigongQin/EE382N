@@ -172,10 +172,64 @@ __global__ void getPairNums(int* pairNums, int cellWidth, int cellHeight){
 }
 
 __global__ void makePairs(Pair* pairs, int* pairNums, int cellWidth, int cellHeight, int cellNumX, int cellNumY){
+    // copy from kernelRenderCircles
+    int circleIdx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (circleIdx >= cuConstRendererParams.numCircles) {
+        return;
+    }
+
+    int index3 = 3 * circleIdx;
+
+    // read position and radius
+    float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
+    float  rad = cuConstRendererParams.radius[circleIdx];
+
+    // compute the bounding box of the circle. The bound is in integer
+    // screen coordinates, so it's clamped to the edges of the screen.
+    short imageWidth = cuConstRendererParams.imageWidth;
+    short imageHeight = cuConstRendererParams.imageHeight;
+    short minX = static_cast<short>(imageWidth * (p.x - rad));
+    short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
+    short minY = static_cast<short>(imageHeight * (p.y - rad));
+    short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
+
+    // a bunch of clamps.  Is there a CUDA built-in for this?
+    short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
+    short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
+    short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
+    short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
+
+    // compute the start region and end region occupied by circle
+    int startRegionX = screenMinX / cellWidth;
+    int endRegionX   = screenMaxX / cellWidth;
+    int startRegionY = screenMinY / cellHeight;
+    int endRegionY   = screenMaxY / cellHeight;
+
+    // Pair the region with corresponding circle
+    int regionIdx; // combine with the previous cells equal to real regionIdx by circle order
+
+    for (int xIdx = startRegionX; xIdx < endRegionX; xIdx++){
+        for (int yIdx = startRegionY; yIdx < endRegionY; yIdx++){
+            regionIdx = (xIdx - startRegionX) * (endRegionY - startRegionY) + yIdx - startRegionY;
+            // regionIdx = (yIdx - startRegionY) * (endRegionX - startRegionX) + x - startRegionX;
+            // update the pairs which bind current circle with it occupied regions
+            pairs[pairNums[circleIdx] + regionIdx].circle = circleIdx;
+            pairs[pairNums[circleIdx] + regionIdx].cell = xIdx + yIdx * cellNumX;
+        }
+    }
 
 }
 
 __global__ void getBounds(Pair* pairs, int* start, int* end, int pairsLength){
+    // obatin the place of strat and end of cell in pairs
+    int pairId = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (pairId >= pairsLength){
+        return;
+    }
+
+    // update start and end
 
 }
 
@@ -847,21 +901,31 @@ CudaRenderer::render() {
     //calculate pairNums
     getPairNums<<<gridDim, blockDim>>>(pairNums, cellWidth, cellHeight);
 	cudaCheckError(cudaDeviceSynchronize());
+
+    // check elements
+    printf("numCircles: %d", numCircles);
+    // printf("numCircles", numCircles);
     
-    //accumulate pairNums to itself.
+    //accumulate pairNums to itself with csr format
     exclusive_scan(pairNumsLength, pairNums);
-    cudaCheckError(cudaDeviceSynchronize()); //HQ:  we need at this synchronization here
+    cudaCheckError(cudaDeviceSynchronize()); // we need at this synchronization
+
+    // check elements
+    // debug_kernel<<<1, 1>>>(5, pairNums);
    
     //pairs: each entry maps 1 circle to 1 cell
     Pair* pairs;
     int pairsLength;
-    // HQ: The overall pairNums should be precisely equal to the pairNums[numCircles] where we set a nextPow2 value with extra values to be 0 
+    // The overall pairNums should be precisely equal to the pairNums[numCircles] where we set a nextPow2 value with extra values to be 0 
     cudaMemcpy(&pairsLength, (void*)(&pairNums[numCircles]), sizeof(int), cudaMemcpyDeviceToHost);
     //cudaMemcpy(&pairsLength, totalNum, sizeof(int), cudaMemcpyDeviceToHost);
 	cudaCheckError(cudaDeviceSynchronize());
 
     // check elements
-    printf("numCircles : %d", pairsLength);
+    printf("check which is total num\n");
+    debug_kernel<<<1, 1>>>(1, pairNums + numCircles);
+    // printf("numCircles : %d", pair);
+    // printf("numCircles-1(%d) : %d", pairNums[numCircles-1]);
 
     pairsLength = nextPow2(pairsLength);
     cudaCheckError(cudaMalloc((void**)(&pairs), sizeof(Pair) * pairsLength));
