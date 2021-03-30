@@ -850,12 +850,12 @@ CudaRenderer::render() {
     
     //accumulate pairNums to itself.
     exclusive_scan(pairNumsLength, pairNums);
-    cudaCheckError(cudaDeviceSynchronize()); // we need at this synchronization here
+    cudaCheckError(cudaDeviceSynchronize()); //HQ:  we need at this synchronization here
    
     //pairs: each entry maps 1 circle to 1 cell
     Pair* pairs;
     int pairsLength;
-    // The overall pairNums should be precisely equal to the pairNums[numCircles] where we set a nextPow2 value with extra values to be 0 
+    // HQ: The overall pairNums should be precisely equal to the pairNums[numCircles] where we set a nextPow2 value with extra values to be 0 
     cudaMemcpy(&pairsLength, (void*)(&pairNums[numCircles]), sizeof(int), cudaMemcpyDeviceToHost);
     //cudaMemcpy(&pairsLength, totalNum, sizeof(int), cudaMemcpyDeviceToHost);
 	cudaCheckError(cudaDeviceSynchronize());
