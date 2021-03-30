@@ -9,68 +9,25 @@
 #include <driver_functions.h>
 #include "device_launch_parameters.h"
 
-#include <thrust/sort.h>
-#include <thrust/device_ptr.h>
-#include <thrust/device_malloc.h>
-#include <thrust/device_free.h>
-#include <thrust/execution_policy.h>
-
 #include "cudaRenderer.h"
 #include "image.h"
 #include "noise.h"
 #include "sceneLoader.h"
 #include "util.h"
 
+// add thrust
+#include <thrust/sort.h>
+#include <thrust/device_ptr.h>
+#include <thrust/device_malloc.h>
+#include <thrust/device_free.h>
+#include <thrust/execution_policy.h>
+
 #define THREADS_PER_BLOCK 256
 
-static inline int nextPow2(int n)
-{
-    n--;
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-    n++;
-    return n;
-}
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
 ///////////////////////////////////////////////////////////////////////////////////////
-cudaError_t cudaCheckError(cudaError_t result)
-{
-#if defined(DEBUG) || defined(_DEBUG)
-  if (result != cudaSuccess) {
-    fprintf(stderr, "CUDA Runtime Error: %s\n", cudaGetErrorString(result));
-    assert(result == cudaSuccess);
-  }
-#endif
-  return result;
-}
 
-struct Pair {
-	int circle;
-	int cell;
-	bool operator < (const Pair &p) const {
-		//return (cell < p.cell || (cell == p.cell && circle < p.circle));
-        return (cell < p.cell);//maybe this is enough?
-	}
-	Pair(){}
-};
-
-__global__ void getPairNums(int* pairNums, int cellWidth, int cellHeight){
-
-}
-
-__global__ void makePairs(Pair* pairs, int* pairNums, int cellWidth, int cellHeight, int cellNumX, int cellNumY){
-
-}
-
-__global__ void getBounds(Pair* pairs, int* start, int* end, int pairsLength){
-
-}
-
-////////////////////////////////////////////////////////////////////////////////////////
 struct GlobalConstants {
 
     SceneName sceneName;
@@ -103,6 +60,24 @@ __constant__ float  cuConstNoise1DValueTable[256];
 #define COLOR_MAP_SIZE 5
 __constant__ float  cuConstColorRamp[COLOR_MAP_SIZE][3];
 
+////////////////////////////////////////////////////////////////////////////////////////
+// Add our impl
+///////////////////////////////////////////////////////////////////////////////////////
+
+
+// scan codes
+// Rounding up to next power of 2
+static inline int nextPow2(int n)
+{
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n++;
+    return n;
+}
 
 __global__ void
 upsweep(int N, int twod, int twod1, int* output) {
@@ -130,12 +105,86 @@ downsweep(int N, int twod, int twod1, int* output) {
        output[index+ twod1 -1] += t;}
 }
 
+__global__ void debug_kernel(int N, int* out_array){
+    for(int i = 0; i < N; i++){
+   printf("out_array[%d] = %d\n",i, out_array[i]);
+    }
+    printf("\n");
+  }
+
+cudaError_t cudaCheckError(cudaError_t result)
+{
+#if defined(DEBUG) || defined(_DEBUG)
+  if (result != cudaSuccess) {
+    fprintf(stderr, "CUDA Runtime Error: %s\n", cudaGetErrorString(result));
+    assert(result == cudaSuccess);
+  }
+#endif
+  return result;
+}
+
+struct Pair {
+	int circle;
+	int cell;
+	bool operator < (const Pair &p) const {
+		//return (cell < p.cell || (cell == p.cell && circle < p.circle));
+        return (cell < p.cell);//maybe this is enough?
+	}
+	Pair(){}
+};
+
+__global__ void getPairNums(int* pairNums, int cellWidth, int cellHeight){
+    // copy from kernelRenderCircles
+    int circleIdx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (circleIdx >= cuConstRendererParams.numCircles) {
+        return;
+    }
+
+    int index3 = 3 * circleIdx;
+
+    // read position and radius
+    float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
+    float  rad = cuConstRendererParams.radius[circleIdx];
+
+    // compute the bounding box of the circle. The bound is in integer
+    // screen coordinates, so it's clamped to the edges of the screen.
+    short imageWidth = cuConstRendererParams.imageWidth;
+    short imageHeight = cuConstRendererParams.imageHeight;
+    short minX = static_cast<short>(imageWidth * (p.x - rad));
+    short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
+    short minY = static_cast<short>(imageHeight * (p.y - rad));
+    short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
+
+    // a bunch of clamps.  Is there a CUDA built-in for this?
+    short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
+    short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
+    short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
+    short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
+
+    // compute the start region and end region occupied by circle
+    int startRegionX = screenMinX / cellWidth;
+    int endRegionX   = screenMaxX / cellWidth;
+    int startRegionY = screenMinY / cellHeight;
+    int endRegionY   = screenMaxY / cellHeight;
+
+    pairNums[circleIdx] = (endRegionY - startRegionY) * (endRegionX - startRegionX);
+}
+
+__global__ void makePairs(Pair* pairs, int* pairNums, int cellWidth, int cellHeight, int cellNumX, int cellNumY){
+
+}
+
+__global__ void getBounds(Pair* pairs, int* start, int* end, int pairsLength){
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
 
 // including parts of the CUDA code from external files to keep this
 // file simpler and to seperate code that should not be modified
 #include "noiseCuda.cu_inl"
 #include "lookupColor.cu_inl"
-
 
 // kernelClearImageSnowflake -- (CUDA device code)
 //
@@ -791,6 +840,7 @@ CudaRenderer::render() {
     int pairNumsLength = nextPow2(numCircles);
     cudaCheckError(cudaMalloc((void**)(&pairNums), pairNumsLength*sizeof(int)));
     cudaMemset(pairNums, 0, sizeof(int) * pairNumsLength);
+
     //cudaCheckError(cudaMalloc((void**)(&totalNum), sizeof(int)));
 	//cudaMemset(totalNum, 0, sizeof(int));
 
@@ -800,13 +850,19 @@ CudaRenderer::render() {
     
     //accumulate pairNums to itself.
     exclusive_scan(pairNumsLength, pairNums);
+    cudaCheckError(cudaDeviceSynchronize()); // we need at this synchronization here
    
     //pairs: each entry maps 1 circle to 1 cell
     Pair* pairs;
     int pairsLength;
-    cudaMemcpy(&pairsLength, (void*)(&pairNums[pairNumsLength-1]), sizeof(int), cudaMemcpyDeviceToHost);
+    // The overall pairNums should be precisely equal to the pairNums[numCircles] where we set a nextPow2 value with extra values to be 0 
+    cudaMemcpy(&pairsLength, (void*)(&pairNums[numCircles]), sizeof(int), cudaMemcpyDeviceToHost);
     //cudaMemcpy(&pairsLength, totalNum, sizeof(int), cudaMemcpyDeviceToHost);
-	cudaCheckError(cudaThreadSynchronize());
+	cudaCheckError(cudaDeviceSynchronize());
+
+    // check elements
+    printf("numCircles : %d", pairsLength);
+
     pairsLength = nextPow2(pairsLength);
     cudaCheckError(cudaMalloc((void**)(&pairs), sizeof(Pair) * pairsLength));
     
@@ -819,7 +875,7 @@ CudaRenderer::render() {
 	host_pairs = new Pair[pairsLength];
 	cudaMemcpy(host_pairs, pairs, sizeof(Pair) * pairsLength, cudaMemcpyDeviceToHost);
 	thrust::sort(thrust::host, host_pairs, host_pairs + pairsLength);
-	cudaCheckError(cudaThreadSynchronize());	
+	cudaCheckError(cudaDeviceSynchronize());	
 	cudaMemcpy(pairs, host_pairs, sizeof(Pair) * pairsLength, cudaMemcpyHostToDevice);
 
     //boundaries in pairs for each cell
@@ -830,7 +886,7 @@ CudaRenderer::render() {
 
     //calculate boundaries
     getBounds<<<((pairsLength-1)+THREADS_PER_BLOCK-1)/THREADS_PER_BLOCK, THREADS_PER_BLOCK>>>(pairs, start, end, pairsLength);
-	cudaCheckError(cudaThreadSynchronize());
+	cudaCheckError(cudaDeviceSynchronize());
 
     //parallel render each cell
     dim3 blockDimCell(cellWidth, cellHeight);
