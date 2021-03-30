@@ -7,6 +7,13 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <driver_functions.h>
+#include "device_launch_parameters.h"
+
+#include <thrust/sort.h>
+#include <thrust/device_ptr.h>
+#include <thrust/device_malloc.h>
+#include <thrust/device_free.h>
+#include <thrust/execution_policy.h>
 
 #include "cudaRenderer.h"
 #include "image.h"
@@ -14,7 +21,7 @@
 #include "sceneLoader.h"
 #include "util.h"
 
-
+#define THREADS_PER_BLOCK 256
 
 static inline int nextPow2(int n)
 {
@@ -30,7 +37,40 @@ static inline int nextPow2(int n)
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
 ///////////////////////////////////////////////////////////////////////////////////////
+cudaError_t cudaCheckError(cudaError_t result)
+{
+#if defined(DEBUG) || defined(_DEBUG)
+  if (result != cudaSuccess) {
+    fprintf(stderr, "CUDA Runtime Error: %s\n", cudaGetErrorString(result));
+    assert(result == cudaSuccess);
+  }
+#endif
+  return result;
+}
 
+struct Pair {
+	int circle;
+	int cell;
+	bool operator < (const Pair &p) const {
+		return (cell < p.cell || (cell == p.cell && circle < p.circle));
+	}
+	Pair(){}
+	__device__ Pair(int _circle, int _cell) :circle(_circle), cell(_cell) {}
+};
+
+__global__ void getPairNums(int* pairNums, int cellWidth, int cellHeight){
+
+}
+
+__global__ void makePairs(Pair* pairs, int* pairNums, int cellWidth, int cellHeight, int cellNumX, int cellNumY){
+
+}
+
+__global__ void getBounds(Pair* pairs, int* start, int* end, int pairsLength){
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
 struct GlobalConstants {
 
     SceneName sceneName;
@@ -422,7 +462,7 @@ shadePixel(int circleIndex, float2 pixelCenter, float3 p, float4* imagePtr) {
 // Each thread renders a circle.  Since there is no protection to
 // ensure order of update or mutual exclusion on the output image, the
 // resulting image will be incorrect.
-__global__ void kernelRenderCircles() {
+__global__ void kernelRenderCircles_simple() {
 
     int index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -465,6 +505,47 @@ __global__ void kernelRenderCircles() {
     }
 }
 
+__global__ void kernelRenderCircles(Pair* pairs, int* start, int* end, int cellNumX, int cellNumY){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (index >= cuConstRendererParams.numCircles)
+        return;
+
+    int index3 = 3 * index;
+
+    // read position and radius
+    float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
+    float  rad = cuConstRendererParams.radius[index];
+
+    // compute the bounding box of the circle. The bound is in integer
+    // screen coordinates, so it's clamped to the edges of the screen.
+    short imageWidth = cuConstRendererParams.imageWidth;
+    short imageHeight = cuConstRendererParams.imageHeight;
+    short minX = static_cast<short>(imageWidth * (p.x - rad));
+    short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
+    short minY = static_cast<short>(imageHeight * (p.y - rad));
+    short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
+
+    // a bunch of clamps.  Is there a CUDA built-in for this?
+    short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
+    short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
+    short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
+    short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
+
+    float invWidth = 1.f / imageWidth;
+    float invHeight = 1.f / imageHeight;
+
+    // for all pixels in the bonding box
+    for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
+        float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
+        for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
+            float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+                                                 invHeight * (static_cast<float>(pixelY) + 0.5f));
+            shadePixel(index, pixelCenterNorm, p, imgPtr);
+            imgPtr++;
+        }
+    }
+}
 ////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -696,9 +777,71 @@ void
 CudaRenderer::render() {
 
     // 256 threads per block is a healthy number
-    dim3 blockDim(256, 1);
+    dim3 blockDim(THREADS_PER_BLOCK, 1);
     dim3 gridDim((numCircles + blockDim.x - 1) / blockDim.x);
 
-    kernelRenderCircles<<<gridDim, blockDim>>>();
-    cudaDeviceSynchronize();
+    int cellWidth=32;
+    int cellHeight=32;
+    int cellNumX=(image->width + cellWidth - 1)/cellWidth;
+    int cellNumY=(image->height + cellHeight -1)/cellHeight;
+
+    //pairNums: each entry contains the number of cells interfering with a circle.
+    int* pairNums;
+    //int* totalNum; //is this neccessary?
+    int pairNumsLength = nextPow2(numCircles);
+    cudaCheckError(cudaMalloc((void**)(&pairNums), pairNumsLength*sizeof(int)));
+    cudaMemset(pairNums, 0, sizeof(int) * pairNumsLength);
+    //cudaCheckError(cudaMalloc((void**)(&totalNum), sizeof(int)));
+	//cudaMemset(totalNum, 0, sizeof(int));
+
+    //calculate pairNums
+    getPairNums<<<gridDim, blockDim>>>(pairNums, cellWidth, cellHeight);
+	cudaCheckError(cudaDeviceSynchronize());
+    
+    //accumulate pairNums to itself.
+    exclusive_scan(pairNumsLength, pairNums);
+   
+    //pairs: each entry maps 1 circle to 1 cell
+    Pair* pairs;
+    int pairsLength;
+    cudaMemcpy(&pairsLength, (void*)(&pairNums[pairNumsLength-1]), sizeof(int), cudaMemcpyDeviceToHost);
+    //cudaMemcpy(&pairsLength, totalNum, sizeof(int), cudaMemcpyDeviceToHost);
+	cudaCheckError(cudaThreadSynchronize());
+    pairsLength = nextPow2(pairsLength);
+    cudaCheckError(cudaMalloc((void**)(&pairs), sizeof(Pair) * pairsLength));
+    
+    //calculate pairs
+    makePairs<<<gridDim, blockDim>>>(pairs, pairNums, cellWidth, cellHeight, cellNumX, cellNumY);
+	cudaCheckError(cudaDeviceSynchronize());
+
+    //sort pairs by cell (done in host)
+    Pair* host_pairs;
+	host_pairs = new Pair[pairsLength];
+	cudaMemcpy(host_pairs, pairs, sizeof(Pair) * pairsLength, cudaMemcpyDeviceToHost);
+	thrust::sort(thrust::host, host_pairs, host_pairs + pairsLength);
+	cudaCheckError(cudaThreadSynchronize());	
+	cudaMemcpy(pairs, host_pairs, sizeof(Pair) * pairsLength, cudaMemcpyHostToDevice);
+
+    //boundaries in pairs for each cell
+    int *start, *end;
+	cudaCheckError(cudaMalloc((void**)(&start), sizeof(int) * cellNumX * cellNumY));
+	cudaMemset(start, -1, sizeof(int) * cellNumX * cellNumY);
+	cudaCheckError(cudaMalloc((void**)(&end), sizeof(int) * cellNumX * cellNumY));
+
+    //calculate boundaries
+    getBounds<<<((pairsLength-1)+THREADS_PER_BLOCK-1)/THREADS_PER_BLOCK, THREADS_PER_BLOCK>>>(pairs, start, end, pairsLength);
+	cudaCheckError(cudaThreadSynchronize());
+
+    //parallel render each cell
+    dim3 blockDimCell(cellWidth, cellHeight);
+	dim3 gridDimCell(cellNumX, cellNumY);
+    //kernelRenderCircles<<<gridDimCell, blockDimCell>>>(pairs, start, end, cellNumX, cellNumY);
+    kernelRenderCircles_simple<<<gridDim, blockDim>>>();
+	cudaDeviceSynchronize();
+
+    //cudaFree(totalNum);
+    cudaFree(pairNums);
+    cudaFree(pairs);
+    cudaFree(start);
+    cudaFree(end);
 }
