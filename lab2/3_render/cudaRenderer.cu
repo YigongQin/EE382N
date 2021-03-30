@@ -52,10 +52,10 @@ struct Pair {
 	int circle;
 	int cell;
 	bool operator < (const Pair &p) const {
-		return (cell < p.cell || (cell == p.cell && circle < p.circle));
+		//return (cell < p.cell || (cell == p.cell && circle < p.circle));
+        return (cell < p.cell);//maybe this is enough?
 	}
 	Pair(){}
-	__device__ Pair(int _circle, int _cell) :circle(_circle), cell(_cell) {}
 };
 
 __global__ void getPairNums(int* pairNums, int cellWidth, int cellHeight){
