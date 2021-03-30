@@ -164,9 +164,9 @@ __global__ void getPairNums(int* pairNums, int cellWidth, int cellHeight){
 
     // compute the start region and end region occupied by circle
     int startRegionX = screenMinX / cellWidth;
-    int endRegionX   = screenMaxX / cellWidth;
+    int endRegionX   = (screenMaxX + + cellWidth - 1) / cellWidth;
     int startRegionY = screenMinY / cellHeight;
-    int endRegionY   = screenMaxY / cellHeight;
+    int endRegionY   = (screenMaxY + cellHeight - 1) / cellHeight;
 
     pairNums[circleIdx] = (endRegionY - startRegionY) * (endRegionX - startRegionX);
 }
@@ -202,9 +202,9 @@ __global__ void makePairs(Pair* pairs, int* pairNums, int cellWidth, int cellHei
 
     // compute the start region and end region occupied by circle
     int startRegionX = screenMinX / cellWidth;
-    int endRegionX   = screenMaxX / cellWidth;
+    int endRegionX   = (screenMaxX + + cellWidth - 1) / cellWidth;
     int startRegionY = screenMinY / cellHeight;
-    int endRegionY   = screenMaxY / cellHeight;
+    int endRegionY   = (screenMaxY + cellHeight - 1) / cellHeight;
 
     // Pair the region with corresponding circle
     int regionIdx; // combine with the previous cells equal to real regionIdx by circle order
@@ -222,12 +222,32 @@ __global__ void makePairs(Pair* pairs, int* pairNums, int cellWidth, int cellHei
 }
 
 __global__ void getBounds(Pair* pairs, int* start, int* end, int pairsLength){
+    __shared__ Pair cache[THREADS_PER_BLOCK + 1];
+    int threadId = threadIdx.x;
     // obatin the place of strat and end of cell in pairs
     int pairId = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (pairId >= pairsLength){
         return;
     }
+
+    cache[threadId] = pairs[pairId];
+	if (threadId == THREADS_PER_BLOCK - 1 && pairId < pairsLength - 1) cache[THREADS_PER_BLOCK] = pairs[pairId + 1];
+	__syncthreads();
+
+
+	if (pairId == pairsLength - 1) {
+		end[cache[threadId].cell] = pairsLength;
+		return;
+	}
+	if (pairId == 0) {
+		start[cache[threadId].cell] = 0;
+	}
+	if (cache[threadId].cell != cache[threadId + 1].cell) {
+		end[cache[threadId].cell] = pairId + 1;
+		start[cache[threadId + 1].cell] = pairId + 1;
+	}
+	return;
 
     // update start and end
 
@@ -609,45 +629,44 @@ __global__ void kernelRenderCircles_simple() {
 }
 
 __global__ void kernelRenderCircles(Pair* pairs, int* start, int* end, int cellNumX, int cellNumY){
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    int regionIdx = blockIdx.y * cellNumX + blockIdx.x;
 
-    if (index >= cuConstRendererParams.numCircles)
-        return;
+    // obtain the start and end of circle idx for current region 
+    int startCircleIdx = start[regionIdx];
+    int endCircleIdx   = end[regionIdx];
 
-    int index3 = 3 * index;
+    if (startCircleIdx == -1)return;
 
-    // read position and radius
-    float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
-    float  rad = cuConstRendererParams.radius[index];
-
-    // compute the bounding box of the circle. The bound is in integer
-    // screen coordinates, so it's clamped to the edges of the screen.
     short imageWidth = cuConstRendererParams.imageWidth;
     short imageHeight = cuConstRendererParams.imageHeight;
-    short minX = static_cast<short>(imageWidth * (p.x - rad));
-    short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
-    short minY = static_cast<short>(imageHeight * (p.y - rad));
-    short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
-
-    // a bunch of clamps.  Is there a CUDA built-in for this?
-    short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
-    short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
-    short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
-    short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
-
     float invWidth = 1.f / imageWidth;
     float invHeight = 1.f / imageHeight;
 
-    // for all pixels in the bonding box
-    for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
-        float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
-        for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
-            float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
-                                                 invHeight * (static_cast<float>(pixelY) + 0.5f));
-            shadePixel(index, pixelCenterNorm, p, imgPtr);
-            imgPtr++;
-        }
+    // for all pixels in the region
+    // update each pixel based on given sequence of circles on each region
+    int pixelX = blockIdx.x * blockDim.x + threadIdx.x;
+	int pixelY = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (pixelY >= imageHeight || pixelX >= imageWidth) return;
+
+    float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+        invHeight * (static_cast<float>(pixelY) + 0.5f));
+    
+    float4 *imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + pixelX)]);
+
+    // iterate over all circles on this region
+    for (int idx = startCircleIdx; idx < endCircleIdx; idx ++){
+        // update pixel under circle order
+        int circleIdx = pairs[idx].circle;
+        int index3 = 3 * circleIdx;
+        // read position and radius
+        float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
+        // float  rad = cuConstRendererParams.radius[circleIdx];
+        shadePixel(circleIdx, pixelCenterNorm, p, imgPtr);
     }
+    // write back
+    // (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + pixelX)]) = imgPtr;
 }
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -955,8 +974,8 @@ CudaRenderer::render() {
     //parallel render each cell
     dim3 blockDimCell(cellWidth, cellHeight);
 	dim3 gridDimCell(cellNumX, cellNumY);
-    //kernelRenderCircles<<<gridDimCell, blockDimCell>>>(pairs, start, end, cellNumX, cellNumY);
-    kernelRenderCircles_simple<<<gridDim, blockDim>>>();
+    kernelRenderCircles<<<gridDimCell, blockDimCell>>>(pairs, start, end, cellNumX, cellNumY);
+    // kernelRenderCircles_simple<<<gridDim, blockDim>>>();
 	cudaDeviceSynchronize();
 
     //cudaFree(totalNum);
