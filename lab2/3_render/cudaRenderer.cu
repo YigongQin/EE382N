@@ -907,44 +907,31 @@ CudaRenderer::render() {
 
     //pairNums: each entry contains the number of cells interfering with a circle.
     int* pairNums;
-    //int* totalNum; //is this neccessary?
     int pairNumsLength = nextPow2(numCircles);
+
+    // check whether it is equal which will make exclusive scan fail
+    if (numCircles == pairNumsLength){
+        pairNumsLength = nextPow2(numCircles + 1);
+    }
+
     cudaCheckError(cudaMalloc((void**)(&pairNums), pairNumsLength*sizeof(int)));
     cudaMemset(pairNums, 0, sizeof(int) * pairNumsLength);
-
-    //cudaCheckError(cudaMalloc((void**)(&totalNum), sizeof(int)));
-	//cudaMemset(totalNum, 0, sizeof(int));
 
     //calculate pairNums
     getPairNums<<<gridDim, blockDim>>>(pairNums, cellWidth, cellHeight);
 	cudaCheckError(cudaDeviceSynchronize());
-
-    // check elements
-    printf("numCircles: %d", numCircles);
-    // printf("numCircles", numCircles);
     
     //accumulate pairNums to itself with csr format
     exclusive_scan(pairNumsLength, pairNums);
-    cudaCheckError(cudaDeviceSynchronize()); // we need at this synchronization
-
-    // check elements
-    // debug_kernel<<<1, 1>>>(5, pairNums);
+    cudaCheckError(cudaDeviceSynchronize()); // we need add this synchronization
    
     //pairs: each entry maps 1 circle to 1 cell
     Pair* pairs;
     int pairsLength;
     // The overall pairNums should be precisely equal to the pairNums[numCircles] where we set a nextPow2 value with extra values to be 0 
     cudaMemcpy(&pairsLength, (void*)(&pairNums[numCircles]), sizeof(int), cudaMemcpyDeviceToHost);
-    //cudaMemcpy(&pairsLength, totalNum, sizeof(int), cudaMemcpyDeviceToHost);
 	cudaCheckError(cudaDeviceSynchronize());
 
-    // check elements
-    printf("check which is total num\n");
-    debug_kernel<<<1, 1>>>(1, pairNums + numCircles);
-    // printf("numCircles : %d", pair);
-    // printf("numCircles-1(%d) : %d", pairNums[numCircles-1]);
-
-    pairsLength = nextPow2(pairsLength);
     cudaCheckError(cudaMalloc((void**)(&pairs), sizeof(Pair) * pairsLength));
     
     //calculate pairs
