@@ -894,6 +894,14 @@ void exclusive_scan( int length, int* device_result)
     }
 }
 
+__global__ void
+copy_cells(Pair* pairs, int* d_cells, int pairsLength){ 
+   int index = blockIdx.x * blockDim.x + threadIdx.x;
+   if (index < pairsLength){d_cells[index]=pairs[index].cell;}
+
+
+}
+
 
 void
 CudaRenderer::render() {
@@ -941,13 +949,21 @@ CudaRenderer::render() {
 	cudaDeviceSynchronize();
 
     //sort pairs by cell (done in host)
-    Pair* host_pairs;
-	host_pairs = new Pair[pairsLength];
-	cudaMemcpy(host_pairs, pairs, sizeof(Pair) * pairsLength, cudaMemcpyDeviceToHost);
-	thrust::sort(thrust::host, host_pairs, host_pairs + pairsLength);
+    int* d_cells;
+    cudaMalloc((void**)(&d_cells), sizeof(int) * pairsLength);
+    copy_cells<<< (pairsLength+512-1)/512 ,512>>>(pairs, d_cells, pairsLength);
+    //Pair* host_pairs;
+	//host_pairs = new Pair[pairsLength];
+	//cudaMemcpy(host_pairs, pairs, sizeof(Pair) * pairsLength, cudaMemcpyDeviceToHost);
+    //int* vector = new int[pairsLength];
+    //for (int i=0; i<pairsLength;i++){vector[i]=host_pairs[i].cell;}//printf("%d ",vector[i]);}
+    //thrust::sort_by_key(thrust::host, vector, vector + pairsLength, host_pairs);
+    thrust::sort_by_key(thrust::device, d_cells, d_cells + pairsLength, pairs);
+    //for (int i=0; i<pairsLength;i++){host_pairs[i].cell=vector[i];printf("%d ", host_pairs[i].cell);}
+        //thrust::sort(thrust::device, pairs, pairs + pairsLength);
     // thrust::sort(host_pairs, host_pairs + pairsLength);
 	cudaDeviceSynchronize();	
-	cudaMemcpy(pairs, host_pairs, sizeof(Pair) * pairsLength, cudaMemcpyHostToDevice);
+	//cudaMemcpy(pairs, host_pairs, sizeof(Pair) * pairsLength, cudaMemcpyHostToDevice);
 
     //boundaries in pairs for each cell
     int *start, *end;
