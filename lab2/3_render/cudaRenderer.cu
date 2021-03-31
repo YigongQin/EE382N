@@ -114,29 +114,26 @@ __global__ void debug_kernel(int N, int* out_array){
     printf("\n");
   }
 
-cudaError_t cudaCheckError(cudaError_t result)
-{
-#if defined(DEBUG) || defined(_DEBUG)
-  if (result != cudaSuccess) {
-    fprintf(stderr, "CUDA Runtime Error: %s\n", cudaGetErrorString(result));
-    assert(result == cudaSuccess);
-  }
-#endif
-  return result;
-}
+// cudaError_t cudaCheckError(cudaError_t result)
+// {
+// #if defined(DEBUG) || defined(_DEBUG)
+//   if (result != cudaSuccess) {
+//     fprintf(stderr, "CUDA Runtime Error: %s\n", cudaGetErrorString(result));
+//     assert(result == cudaSuccess);
+//   }
+// #endif
+//   return result;
+// }
 
 struct Pair {
 	int circle;
 	int cell;
-	bool operator < (const Pair &p) const {
-		//return (cell < p.cell || (cell == p.cell && circle < p.circle));
-        return (cell < p.cell);//maybe this is enough?
+    __host__ __device__ bool operator < (const Pair &p) const {
+        return (cell < p.cell || (cell == p.cell && circle < p.circle));
 	}
-	Pair(){}
 };
 
 __global__ void getPairNums(int* pairNums){
-    // copy from kernelRenderCircles
     int circleIdx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (circleIdx >= cuConstRendererParams.numCircles) {
@@ -158,7 +155,7 @@ __global__ void getPairNums(int* pairNums){
     short minY = static_cast<short>(imageHeight * (p.y - rad));
     short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
 
-    // a bunch of clamps.  Is there a CUDA built-in for this?
+    // clamps
     short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
     short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
     short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
@@ -196,7 +193,7 @@ __global__ void makePairs(Pair* pairs, int* pairNums, int cellNumX, int cellNumY
     short minY = static_cast<short>(imageHeight * (p.y - rad));
     short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
 
-    // a bunch of clamps.  Is there a CUDA built-in for this?
+    //clamps
     short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
     short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
     short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
@@ -212,46 +209,38 @@ __global__ void makePairs(Pair* pairs, int* pairNums, int cellNumX, int cellNumY
     int regionIdx; // combine with the previous cells equal to real regionIdx by circle order
 
     for (int xIdx = startRegionX; xIdx < endRegionX; xIdx++){
-        for (int yIdx = startRegionY; yIdx < endRegionY; yIdx++){
-            // regionIdx = (xIdx - startRegionX) * (endRegionY - startRegionY) + (yIdx - startRegionY);
+        for (int yIdx = startRegionY; yIdx < endRegionY; yIdx++){ 
             regionIdx = (yIdx - startRegionY) * (endRegionX - startRegionX) + xIdx - startRegionX;
-            // update the pairs which bind current circle with it occupied regions
             pairs[pairNums[circleIdx] + regionIdx].circle = circleIdx;
             pairs[pairNums[circleIdx] + regionIdx].cell = xIdx + yIdx * cellNumX;
         }
     }
-
 }
 
 __global__ void getBounds(Pair* pairs, int* start, int* end, int pairsLength){
-    __shared__ Pair cache[THREADS_PER_BLOCK + 1];
-    int threadId = threadIdx.x;
-    // obatin the place of strat and end of cell in pairs
+
     int pairId = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (pairId >= pairsLength){
         return;
     }
 
-    cache[threadId] = pairs[pairId];
-	if (threadId == THREADS_PER_BLOCK - 1 && pairId < pairsLength - 1) cache[THREADS_PER_BLOCK] = pairs[pairId + 1];
-	__syncthreads();
-
 
 	if (pairId == pairsLength - 1) {
-		end[cache[threadId].cell] = pairsLength;
-		return;
+		end[pairs[pairId].cell] = pairsLength;
 	}
-	if (pairId == 0) {
-		start[cache[threadId].cell] = 0;
+	else if (pairs[pairId].cell != pairs[pairId+1].cell) {
+		end[pairs[pairId].cell] = pairId + 1;
 	}
-	if (cache[threadId].cell != cache[threadId + 1].cell) {
-		end[cache[threadId].cell] = pairId + 1;
-		start[cache[threadId + 1].cell] = pairId + 1;
+    else{}
+    if (pairId == 0) {
+		start[pairs[pairId].cell] = 0;
 	}
+    else if (pairs[pairId].cell != pairs[pairId-1].cell) {
+        start[pairs[pairId].cell] = pairId;
+    }
+    else{}
 	return;
-
-    // update start and end
 
 }
 
@@ -587,48 +576,6 @@ shadePixel(int circleIndex, float2 pixelCenter, float3 p, float4* imagePtr) {
 // Each thread renders a circle.  Since there is no protection to
 // ensure order of update or mutual exclusion on the output image, the
 // resulting image will be incorrect.
-__global__ void kernelRenderCircles_simple() {
-
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (index >= cuConstRendererParams.numCircles)
-        return;
-
-    int index3 = 3 * index;
-
-    // read position and radius
-    float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
-    float  rad = cuConstRendererParams.radius[index];
-
-    // compute the bounding box of the circle. The bound is in integer
-    // screen coordinates, so it's clamped to the edges of the screen.
-    short imageWidth = cuConstRendererParams.imageWidth;
-    short imageHeight = cuConstRendererParams.imageHeight;
-    short minX = static_cast<short>(imageWidth * (p.x - rad));
-    short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
-    short minY = static_cast<short>(imageHeight * (p.y - rad));
-    short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
-
-    // a bunch of clamps.  Is there a CUDA built-in for this?
-    short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
-    short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
-    short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
-    short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
-
-    float invWidth = 1.f / imageWidth;
-    float invHeight = 1.f / imageHeight;
-
-    // for all pixels in the bonding box
-    for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
-        float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
-        for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
-            float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
-                                                 invHeight * (static_cast<float>(pixelY) + 0.5f));
-            shadePixel(index, pixelCenterNorm, p, imgPtr);
-            imgPtr++;
-        }
-    }
-}
 
 __global__ void kernelRenderCircles(Pair* pairs, int* start, int* end, int cellNumX, int cellNumY){
     
@@ -664,11 +611,8 @@ __global__ void kernelRenderCircles(Pair* pairs, int* start, int* end, int cellN
         int index3 = 3 * circleIdx;
         // read position and radius
         float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
-        // float  rad = cuConstRendererParams.radius[circleIdx];
         shadePixel(circleIdx, pixelCenterNorm, p, imgPtr);
     }
-    // write back
-    // (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + pixelX)]) = imgPtr;
 }
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -948,22 +892,14 @@ CudaRenderer::render() {
     makePairs<<<gridDim, blockDim>>>(pairs, pairNums, cellNumX, cellNumY);
 	cudaDeviceSynchronize();
 
-    //sort pairs by cell (done in host)
-    int* d_cells;
-    cudaMalloc((void**)(&d_cells), sizeof(int) * pairsLength);
-    copy_cells<<< (pairsLength+512-1)/512 ,512>>>(pairs, d_cells, pairsLength);
-    //Pair* host_pairs;
-	//host_pairs = new Pair[pairsLength];
-	//cudaMemcpy(host_pairs, pairs, sizeof(Pair) * pairsLength, cudaMemcpyDeviceToHost);
-    //int* vector = new int[pairsLength];
-    //for (int i=0; i<pairsLength;i++){vector[i]=host_pairs[i].cell;}//printf("%d ",vector[i]);}
-    //thrust::sort_by_key(thrust::host, vector, vector + pairsLength, host_pairs);
-    thrust::sort_by_key(thrust::device, d_cells, d_cells + pairsLength, pairs);
-    //for (int i=0; i<pairsLength;i++){host_pairs[i].cell=vector[i];printf("%d ", host_pairs[i].cell);}
-        //thrust::sort(thrust::device, pairs, pairs + pairsLength);
-    // thrust::sort(host_pairs, host_pairs + pairsLength);
+    //sort pairs by cell
+    //int* d_cells;
+    //cudaMalloc((void**)(&d_cells), sizeof(int) * pairsLength);
+    //copy_cells<<< (pairsLength+512-1)/512 ,512>>>(pairs, d_cells, pairsLength);
+    
+    //thrust::sort_by_key(thrust::device, d_cells, d_cells + pairsLength, pairs);
+    thrust::sort(thrust::device, pairs, pairs + pairsLength);
 	cudaDeviceSynchronize();	
-	//cudaMemcpy(pairs, host_pairs, sizeof(Pair) * pairsLength, cudaMemcpyHostToDevice);
 
     //boundaries in pairs for each cell
     int *start, *end;
