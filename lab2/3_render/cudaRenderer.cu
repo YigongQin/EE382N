@@ -23,6 +23,8 @@
 #include <thrust/execution_policy.h>
 
 #define THREADS_PER_BLOCK 256
+#define CELL_WIDTH 32
+#define CELL_HEIGHT 32
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
@@ -133,7 +135,7 @@ struct Pair {
 	Pair(){}
 };
 
-__global__ void getPairNums(int* pairNums, int cellWidth, int cellHeight){
+__global__ void getPairNums(int* pairNums){
     // copy from kernelRenderCircles
     int circleIdx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -163,15 +165,15 @@ __global__ void getPairNums(int* pairNums, int cellWidth, int cellHeight){
     short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
 
     // compute the start region and end region occupied by circle
-    int startRegionX = screenMinX / cellWidth;
-    int endRegionX   = (screenMaxX + cellWidth - 1) / cellWidth;
-    int startRegionY = screenMinY / cellHeight;
-    int endRegionY   = (screenMaxY + cellHeight - 1) / cellHeight;
+    int startRegionX = screenMinX / CELL_WIDTH;
+    int endRegionX   = (screenMaxX + CELL_WIDTH - 1) / CELL_WIDTH;
+    int startRegionY = screenMinY / CELL_HEIGHT;
+    int endRegionY   = (screenMaxY + CELL_HEIGHT - 1) / CELL_HEIGHT;
 
     pairNums[circleIdx] = (endRegionY - startRegionY) * (endRegionX - startRegionX);
 }
 
-__global__ void makePairs(Pair* pairs, int* pairNums, int cellWidth, int cellHeight, int cellNumX, int cellNumY){
+__global__ void makePairs(Pair* pairs, int* pairNums, int cellNumX, int cellNumY){
     // copy from kernelRenderCircles
     int circleIdx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -201,10 +203,10 @@ __global__ void makePairs(Pair* pairs, int* pairNums, int cellWidth, int cellHei
     short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
 
     // compute the start region and end region occupied by circle
-    int startRegionX = screenMinX / cellWidth;
-    int endRegionX   = (screenMaxX + cellWidth - 1) / cellWidth;
-    int startRegionY = screenMinY / cellHeight;
-    int endRegionY   = (screenMaxY + cellHeight - 1) / cellHeight;
+    int startRegionX = screenMinX / CELL_WIDTH;
+    int endRegionX   = (screenMaxX + CELL_WIDTH - 1) / CELL_WIDTH;
+    int startRegionY = screenMinY / CELL_HEIGHT;
+    int endRegionY   = (screenMaxY + CELL_HEIGHT - 1) / CELL_HEIGHT;
 
     // Pair the region with corresponding circle
     int regionIdx; // combine with the previous cells equal to real regionIdx by circle order
@@ -900,10 +902,10 @@ CudaRenderer::render() {
     dim3 blockDim(THREADS_PER_BLOCK, 1);
     dim3 gridDim((numCircles + blockDim.x - 1) / blockDim.x);
 
-    int cellWidth=32;
-    int cellHeight=32;
-    int cellNumX=(image->width + cellWidth - 1)/cellWidth;
-    int cellNumY=(image->height + cellHeight -1)/cellHeight;
+    // int cellWidth=32;
+    // int cellHeight=32;
+    int cellNumX=(image->width + CELL_WIDTH - 1)/CELL_WIDTH;
+    int cellNumY=(image->height + CELL_HEIGHT -1)/CELL_HEIGHT;
 
     //pairNums: each entry contains the number of cells interfering with a circle.
     int* pairNums;
@@ -914,56 +916,56 @@ CudaRenderer::render() {
         pairNumsLength = nextPow2(numCircles + 1);
     }
 
-    cudaCheckError(cudaMalloc((void**)(&pairNums), pairNumsLength*sizeof(int)));
+    cudaMalloc((void**)(&pairNums), pairNumsLength*sizeof(int));
     cudaMemset(pairNums, 0, sizeof(int) * pairNumsLength);
 
     //calculate pairNums
-    getPairNums<<<gridDim, blockDim>>>(pairNums, cellWidth, cellHeight);
-	cudaCheckError(cudaDeviceSynchronize());
+    getPairNums<<<gridDim, blockDim>>>(pairNums);
+	cudaDeviceSynchronize();
     
     //accumulate pairNums to itself with csr format
     exclusive_scan(pairNumsLength, pairNums);
-    cudaCheckError(cudaDeviceSynchronize()); // we need add this synchronization
+    cudaDeviceSynchronize(); // we need add this synchronization
    
     //pairs: each entry maps 1 circle to 1 cell
     Pair* pairs;
     int pairsLength;
     // The overall pairNums should be precisely equal to the pairNums[numCircles] where we set a nextPow2 value with extra values to be 0 
     cudaMemcpy(&pairsLength, (void*)(&pairNums[numCircles]), sizeof(int), cudaMemcpyDeviceToHost);
-	cudaCheckError(cudaDeviceSynchronize());
+	cudaDeviceSynchronize();
 
-    cudaCheckError(cudaMalloc((void**)(&pairs), sizeof(Pair) * pairsLength));
+    cudaMalloc((void**)(&pairs), sizeof(Pair) * pairsLength);
     
     //calculate pairs
-    makePairs<<<gridDim, blockDim>>>(pairs, pairNums, cellWidth, cellHeight, cellNumX, cellNumY);
-	cudaCheckError(cudaDeviceSynchronize());
+    makePairs<<<gridDim, blockDim>>>(pairs, pairNums, cellNumX, cellNumY);
+	cudaDeviceSynchronize();
 
     //sort pairs by cell (done in host)
     Pair* host_pairs;
 	host_pairs = new Pair[pairsLength];
 	cudaMemcpy(host_pairs, pairs, sizeof(Pair) * pairsLength, cudaMemcpyDeviceToHost);
 	thrust::sort(thrust::host, host_pairs, host_pairs + pairsLength);
-	cudaCheckError(cudaDeviceSynchronize());	
+    // thrust::sort(host_pairs, host_pairs + pairsLength);
+	cudaDeviceSynchronize();	
 	cudaMemcpy(pairs, host_pairs, sizeof(Pair) * pairsLength, cudaMemcpyHostToDevice);
 
     //boundaries in pairs for each cell
     int *start, *end;
-	cudaCheckError(cudaMalloc((void**)(&start), sizeof(int) * cellNumX * cellNumY));
+	cudaMalloc((void**)(&start), sizeof(int) * cellNumX * cellNumY);
 	cudaMemset(start, -1, sizeof(int) * cellNumX * cellNumY);
-	cudaCheckError(cudaMalloc((void**)(&end), sizeof(int) * cellNumX * cellNumY));
+	cudaMalloc((void**)(&end), sizeof(int) * cellNumX * cellNumY);
 
     //calculate boundaries
     getBounds<<<((pairsLength-1)+THREADS_PER_BLOCK-1)/THREADS_PER_BLOCK, THREADS_PER_BLOCK>>>(pairs, start, end, pairsLength);
-	cudaCheckError(cudaDeviceSynchronize());
+	cudaDeviceSynchronize();
 
     //parallel render each cell
-    dim3 blockDimCell(cellWidth, cellHeight);
+    dim3 blockDimCell(CELL_WIDTH, CELL_HEIGHT);
 	dim3 gridDimCell(cellNumX, cellNumY);
     kernelRenderCircles<<<gridDimCell, blockDimCell>>>(pairs, start, end, cellNumX, cellNumY);
     // kernelRenderCircles_simple<<<gridDim, blockDim>>>();
 	cudaDeviceSynchronize();
 
-    //cudaFree(totalNum);
     cudaFree(pairNums);
     cudaFree(pairs);
     cudaFree(start);
