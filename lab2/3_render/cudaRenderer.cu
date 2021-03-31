@@ -164,7 +164,7 @@ __global__ void getPairNums(int* pairNums, int cellWidth, int cellHeight){
 
     // compute the start region and end region occupied by circle
     int startRegionX = screenMinX / cellWidth;
-    int endRegionX   = (screenMaxX + + cellWidth - 1) / cellWidth;
+    int endRegionX   = (screenMaxX + cellWidth - 1) / cellWidth;
     int startRegionY = screenMinY / cellHeight;
     int endRegionY   = (screenMaxY + cellHeight - 1) / cellHeight;
 
@@ -202,7 +202,7 @@ __global__ void makePairs(Pair* pairs, int* pairNums, int cellWidth, int cellHei
 
     // compute the start region and end region occupied by circle
     int startRegionX = screenMinX / cellWidth;
-    int endRegionX   = (screenMaxX + + cellWidth - 1) / cellWidth;
+    int endRegionX   = (screenMaxX + cellWidth - 1) / cellWidth;
     int startRegionY = screenMinY / cellHeight;
     int endRegionY   = (screenMaxY + cellHeight - 1) / cellHeight;
 
@@ -211,8 +211,8 @@ __global__ void makePairs(Pair* pairs, int* pairNums, int cellWidth, int cellHei
 
     for (int xIdx = startRegionX; xIdx < endRegionX; xIdx++){
         for (int yIdx = startRegionY; yIdx < endRegionY; yIdx++){
-            regionIdx = (xIdx - startRegionX) * (endRegionY - startRegionY) + yIdx - startRegionY;
-            // regionIdx = (yIdx - startRegionY) * (endRegionX - startRegionX) + x - startRegionX;
+            // regionIdx = (xIdx - startRegionX) * (endRegionY - startRegionY) + (yIdx - startRegionY);
+            regionIdx = (yIdx - startRegionY) * (endRegionX - startRegionX) + xIdx - startRegionX;
             // update the pairs which bind current circle with it occupied regions
             pairs[pairNums[circleIdx] + regionIdx].circle = circleIdx;
             pairs[pairNums[circleIdx] + regionIdx].cell = xIdx + yIdx * cellNumX;
@@ -890,8 +890,6 @@ void exclusive_scan( int length, int* device_result)
         int twod1 = twod*2;
             downsweep<<< num_blocks, blocksize  >>>(length, twod, twod1, device_result);
     }
-
-
 }
 
 
