@@ -615,6 +615,35 @@ __global__ void kernelRenderCircles(Pair* pairs, int* start, int* end, int cellN
         shadePixel(circleIdx, pixelCenterNorm, p, imgPtr);
     }
 }
+
+__global__ void kernelRenderCircles_simple(int numCircles, int cellNumX, int cellNumY){
+    short imageWidth = cuConstRendererParams.imageWidth;
+    short imageHeight = cuConstRendererParams.imageHeight;
+    float invWidth = 1.f / imageWidth;
+    float invHeight = 1.f / imageHeight;
+
+    // for all pixels in the region
+    // update each pixel based on given sequence of circles on each region
+    int pixelX = blockIdx.x * blockDim.x + threadIdx.x;
+	int pixelY = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (pixelY >= imageHeight || pixelX >= imageWidth) return;
+
+    float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+        invHeight * (static_cast<float>(pixelY) + 0.5f));
+    
+    float4 *imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + pixelX)]);
+
+    // iterate over all circles on this region
+    for (int idx = 0; idx < numCircles; idx++){
+        // update pixel under circle order
+        int circleIdx = idx;
+        int index3 = 3 * circleIdx;
+        // read position and radius
+        float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
+        shadePixel(circleIdx, pixelCenterNorm, p, imgPtr);
+    }
+}
 ////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -855,10 +884,18 @@ CudaRenderer::render() {
     dim3 blockDim(THREADS_PER_BLOCK, 1);
     dim3 gridDim((numCircles + blockDim.x - 1) / blockDim.x);
 
-    // int cellWidth=32;
-    // int cellHeight=32;
     int cellNumX=(image->width + CELL_WIDTH - 1)/CELL_WIDTH;
     int cellNumY=(image->height + CELL_HEIGHT -1)/CELL_HEIGHT;
+
+    // run simple render when numCircles is small
+    if (numCircles < 10){
+        //parallel render each cell
+        dim3 blockDimCell(CELL_WIDTH, CELL_HEIGHT);
+        dim3 gridDimCell(cellNumX, cellNumY);
+        kernelRenderCircles_simple<<<gridDimCell, blockDimCell>>> (numCircles, cellNumX, cellNumY);
+        cudaDeviceSynchronize();
+        return;
+    }
 
     //pairNums: each entry contains the number of cells interfering with a circle.
     int* pairNums;
