@@ -16,6 +16,7 @@
 #include "util.h"
 
 // add thrust
+#include <thrust/scan.h>
 #include <thrust/sort.h>
 #include <thrust/device_ptr.h>
 #include <thrust/device_malloc.h>
@@ -876,7 +877,8 @@ CudaRenderer::render() {
 	cudaDeviceSynchronize();
     
     //accumulate pairNums to itself with csr format
-    exclusive_scan(pairNumsLength, pairNums);
+    thrust::exclusive_scan(thrust::device, pairNums, pairNums + pairNumsLength, pairNums, 0);
+    //exclusive_scan(pairNumsLength, pairNums);
     cudaDeviceSynchronize(); // we need add this synchronization
    
     //pairs: each entry maps 1 circle to 1 cell
