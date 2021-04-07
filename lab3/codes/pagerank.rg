@@ -89,7 +89,7 @@ where reads (r_pages, r_links), reduces+(r_pages.num_out) do
  
 end
 
--- task2: for evevry link, calculate the dest contribution to the src, add to src.nbrs
+-- task2: for evevry link, calculate the src contribution to the dest, add to dest.neighb_src
 -- has dependency on task1
 task neighbor_contribution(r_pages : region(Page),r_links : region(Link(r_pages)))
 where reads (r_pages, r_links), reduces+(r_pages.neighb_src) do
@@ -124,16 +124,6 @@ do
 
 end
 
---task4: calculate residual if smaller than the error bound
-task check_residual(r_pages : region(Page), error_bound : double )
-where
-  reads(r_pages)
-do
-  var residual : double = 0.0
-  for page in r_pages do
-      residual += page.rank
-  end
-end
 
 
 task dump_ranks(r_pages  : region(Page),
