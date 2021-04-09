@@ -19,10 +19,11 @@ fspace Page {
 --       one that points to the source and another to the destination.
 --
 -- fspace Link(...) { ... }
-fspace Link(r: region(Page))
+-- create pointer for both src and dest pointers
+fspace Link(src: region(Page), dest: region(Page))
 {
-  source_page : ptr(Page, r),
-  dest_page: ptr(Page, r),
+  source_page : ptr(Page, src),
+  dest_page: ptr(Page, dest),
 }
 
 
@@ -39,7 +40,7 @@ task initialize_graph(r_pages   : region(Page),
                       --
                       -- TODO: Give the right region type here.
                       --
-                      r_links   : region(Link(r_pages)),
+                      r_links   : region(Link(r_pages,r_pages)),
                       damp      : double,
                       num_pages : uint64,
                       filename  : int8[512])
@@ -66,6 +67,7 @@ do
     --
     link.source_page = src_page
     link.dest_page = dst_page 
+    link.source_page.num_out += 1
 
   end
   c.fclose(f)
@@ -76,32 +78,26 @@ end
 --
 -- TODO: Implement PageRank. You can use as many tasks as you want.
 --
--- task1: find the number of outgoing links for every page p
--- for every edge, find the source, add its num_out
-task count_out_link(r_pages : region(Page),r_links : region(Link(r_pages)))
-where reads (r_pages, r_links), reduces+(r_pages.num_out) do
-  for link in r_links do
-    link.source_page.num_out += 1
-  end  
-  --for page in r_pages do
-  --  c.printf("number of out link %d \n", page.num_out)
-  --end
- 
-end
+
 -- task2: for evevry link, calculate the src contribution to the dest, add to dest.neighb_src
 -- has dependency on task1
-task neighbor_contribution(r_pages : region(Page),r_links : region(Link(r_pages)))
-where reads (r_pages, r_links), reduces+(r_pages.neighb_src) do
+task neighbor_contribution(r_src_pages : region(Page),r_dest_pages : region(Page),
+                           r_links : region(Link(r_src_pages,r_dest_pages)))
+where reads (r_src_pages, r_links), reduces+(r_dest_pages.neighb_src) do
   for link in r_links do
+    --dynamic_cast(ptr(Page, r_src_pages), link.source_page)
     link.dest_page.neighb_src += link.source_page.rank/link.source_page.num_out
+
   end
   --for page in r_pages do
   --  c.printf("neighbor weights %f \n", page.neighb_src)
   --end
 end
+
+
 --task3: update the page rank and check residual
 task update_page_rank(r_pages : region(Page), damp : double,
-                     num_pages : uint64, error_bound : double) 
+                     num_pages : uint64)--, error_bound : double) 
 where
   reads writes(r_pages)
 do
@@ -114,11 +110,13 @@ do
      -- remeber to clean up the neighb_src
      page.neighb_src = 0.0
   end
-  if residual<error_bound*error_bound then
-  return true
-  else
-  return false
-  end
+
+  return residual
+  --if residual<error_bound*error_bound then
+  --return true
+  --else
+  --return false
+  --end
 end
 
 
@@ -152,31 +150,54 @@ task toplevel()
   -- TODO: Create a region of links.
   --       It is your choice how you allocate the elements in this region.
   --
-  var r_links = region(ispace(ptr, config.num_links), Link(r_pages))
+  var r_links = region(ispace(ptr, config.num_links), Link(r_pages,r_pages))
 
   --
   -- TODO: Create partitions for links and pages.
   --       You can use as many partitions as you want.
   --
+  var num_subregions : uint32  = config.parallelism
+  var ps = ispace(int1d, num_subregions)
+  -- for convenience, create equal partition for both pages and links  
+  var link_par = partition(equal, r_links, ps)
+  var page_par = partition(equal, r_pages, ps) 
+
 
   -- Initialize the page graph from a file
   initialize_graph(r_pages, r_links, config.damp, config.num_pages, config.input)
 
+  -- dependent partition on r_pages
+  var page_src_par = image(r_pages, link_par, r_links.source_page)
+  var page_dest_par = image(r_pages, link_par, r_links.dest_page)
+
+
   var num_iterations = 0
   var converged = false
+  var err: double = 0.0
   __fence(__execution, __block) -- This blocks to make sure we only time the pagerank computation
   var ts_start = c.legion_get_current_time_in_micros()
-  count_out_link(r_pages,r_links)
+
   while not converged do
     num_iterations += 1
     --
     -- TODO: Launch the tasks that you implemented above.
     --       (and of course remove the break statement here.)
     --
-    neighbor_contribution(r_pages,r_links)
-    converged = update_page_rank(r_pages, config.damp, config.num_pages, config.error_bound)  
-    c.printf("iteration %d \n", num_iterations)
-    if num_iterations== config.max_iterations then
+    __demand(__index_launch)
+    for i=0, num_subregions do
+      neighbor_contribution(page_src_par[i], page_dest_par[i], link_par[i])
+      --for link in link_par[i] do
+      --  link.dest_page.neighb_src += link.source_page.rank/link.source_page.num_out
+      --end
+    end
+    __demand(__index_launch)
+    for i = 0, config.parallelism do
+      err += update_page_rank(page_par[i],config.damp, config.num_pages)
+    end
+
+
+    --c.printf("iteration %d \n", num_iterations)
+    if num_iterations== config.max_iterations or err<config.error_bound*config.error_bound then
        break
     end
   end

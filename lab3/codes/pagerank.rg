@@ -66,7 +66,7 @@ do
     --
     link.source_page = src_page
     link.dest_page = dst_page 
-
+    link.source_page.num_out +=1
   end
   c.fclose(f)
   var ts_stop = c.legion_get_current_time_in_micros()
@@ -76,20 +76,8 @@ end
 --
 -- TODO: Implement PageRank. You can use as many tasks as you want.
 --
--- task1: find the number of outgoing links for every page p
--- for every edge, find the source, add its num_out
-task count_out_link(r_pages : region(Page),r_links : region(Link(r_pages)))
-where reads (r_pages, r_links), reduces+(r_pages.num_out) do
-  for link in r_links do
-    link.source_page.num_out += 1
-  end  
-  --for page in r_pages do
-  --  c.printf("number of out link %d \n", page.num_out)
-  --end
- 
-end
 
--- task2: for evevry link, calculate the src contribution to the dest, add to dest.neighb_src
+-- task1: for evevry link, calculate the dest contribution to the src, add to src.nbrs
 -- has dependency on task1
 task neighbor_contribution(r_pages : region(Page),r_links : region(Link(r_pages)))
 where reads (r_pages, r_links), reduces+(r_pages.neighb_src) do
@@ -101,7 +89,7 @@ where reads (r_pages, r_links), reduces+(r_pages.neighb_src) do
   --end
 end
 
---task3: update the page rank and check residual
+--task2: update the page rank and check residual
 task update_page_rank(r_pages : region(Page), damp : double,
                      num_pages : uint64, error_bound : double) 
 where
@@ -162,8 +150,8 @@ task toplevel()
 
   var num_iterations = 0
   var converged = false
+  __fence(__execution, __block)
   var ts_start = c.legion_get_current_time_in_micros()
-  count_out_link(r_pages,r_links)
   while not converged do
     num_iterations += 1
     --
@@ -177,6 +165,7 @@ task toplevel()
        break
     end
   end
+  __fence(__execution, __block)
   var ts_stop = c.legion_get_current_time_in_micros()
   c.printf("PageRank converged after %d iterations in %.4f sec\n",
     num_iterations, (ts_stop - ts_start) * 1e-6)
