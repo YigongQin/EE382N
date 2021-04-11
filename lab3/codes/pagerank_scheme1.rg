@@ -83,7 +83,7 @@ end
 -- has dependency on task1
 task neighbor_contribution(r_src_pages : region(Page),r_dest_pages : region(Page),
                            r_links : region(Link(r_src_pages,r_dest_pages)))
-where reads (r_src_pages, r_links), reduces+(r_dest_pages.neighb_src) do
+where reads (r_src_pages.{rank, num_out}, r_links.{source_page, dest_page}), reduces+(r_dest_pages.neighb_src) do
   for link in r_links do
     --dynamic_cast(ptr(Page, r_src_pages), link.source_page)
     link.dest_page.neighb_src += link.source_page.rank/link.source_page.num_out
@@ -97,9 +97,9 @@ end
 
 --task3: update the page rank and check residual
 task update_page_rank(r_pages : region(Page), damp : double,
-                     num_pages : uint64)--, error_bound : double) 
+                     num_pages : uint64, error_bound : double) 
 where
-  reads writes(r_pages)
+  reads writes(r_pages.{rank, neighb_src})
 do
   var residual : double = 0.0
   var temp : double
@@ -118,6 +118,34 @@ do
   --return false
   --end
 end
+
+task update_all(config  : PageRankConfig,
+                r_pages: region(Page),
+                r_links: region(Link(wild, wild)),
+                p_pages: partition(disjoint, r_pages, ispace(int1d)),
+                p_links: partition(disjoint, r_links, ispace(int1d)),
+                p_src  : partition(aliased, r_pages, ispace(int1d)),
+                p_dst  : partition(aliased, r_pages, ispace(int1d))
+)
+
+where reads writes(r_pages.{rank, neighb_src, num_out}),
+      reads (r_links.{source_page, dest_page})
+do
+  __demand(__index_launch)
+  for i = 0, config.parallelism do
+    neighbor_contribution(p_src[i], p_dst[i], p_links[i])
+  end
+
+  var err : double = 0.0
+  __demand(__index_launch)
+  for i = 0, config.parallelism do
+    err += update_page_rank(p_pages[i], config.damp, config.num_pages, config.error_bound)
+  end
+
+  return err
+end
+
+
 
 
 task dump_ranks(r_pages  : region(Page),
@@ -183,20 +211,11 @@ task toplevel()
     -- TODO: Launch the tasks that you implemented above.
     --       (and of course remove the break statement here.)
     --
-    __demand(__index_launch)
-    for i=0, num_subregions do
-      neighbor_contribution(page_src_par[i], page_dest_par[i], link_par[i])
-      --for link in link_par[i] do
-      --  link.dest_page.neighb_src += link.source_page.rank/link.source_page.num_out
-      --end
-    end
-    __demand(__index_launch)
-    for i = 0, config.parallelism do
-      err += update_page_rank(page_par[i],config.damp, config.num_pages)
-    end
+
+    err = update_all(config, r_pages, r_links, page_par, link_par, page_src_par, page_dest_par)
 
 
-    --c.printf("iteration %d \n", num_iterations)
+    c.printf("iteration %d \n", num_iterations)
     if num_iterations== config.max_iterations or err<config.error_bound*config.error_bound then
        break
     end
