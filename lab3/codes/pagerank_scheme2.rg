@@ -92,6 +92,8 @@ where reads (r_pages, r_links), reduces+(r_pages.num_out) do
   --end 
  
 end
+
+
 -- task2: for evevry link, calculate the src contribution to the dest, add to dest.neighb_src
 -- has dependency on task1
 
@@ -100,7 +102,7 @@ task neighbor_contribution(r_src : region(Page),
                            r_dst : region(Page),
                            r_links : region(Link(r_src, r_dst))
 )
-where reads (r_src.{rank, num_out}, r_links), reduces+(r_dst.neighb_src) do
+where reads (r_src.{rank, num_out}, r_links.{src_page, dst_page}), reduces+(r_dst.neighb_src) do
   for link in r_links do
     link.dst_page.neighb_src += link.src_page.rank/link.src_page.num_out
   end
@@ -113,7 +115,7 @@ end
 task update_page_rank(r_pages : region(Page), damp : double,
                      num_pages : uint64, error_bound : double) 
 where
-  reads writes(r_pages)
+  reads writes(r_pages.{rank, neighb_src})
 do
   var residual : double = 0.0
   var temp : double
@@ -136,25 +138,25 @@ end
 --task4: update all in one piece
 task update_all(config  : PageRankConfig,
                 r_pages: region(Page),
-                r_links: region(Link(r_pages, r_pages)),
+                r_links: region(Link(wild, wild)),
                 p_pages: partition(disjoint, r_pages, ispace(int1d)),
                 p_links: partition(disjoint, r_links, ispace(int1d)),
                 p_src  : partition(aliased, r_pages, ispace(int1d)),
                 p_dst  : partition(disjoint, r_pages, ispace(int1d))
 )
 
-where reads writes(r_pages.{rank, neighb_src, num_out}, r_links.{src_page, dst_page}),
-      reads (r_pages.{rank, neighb_src, num_out})
+where reads writes(r_pages.{rank, neighb_src, num_out}),
+      reads (r_links.{src_page, dst_page})
 do
   __demand(__index_launch)
   for i = 0, config.parallelism do
-    neighbor_contribution(p_pages[i], p_links[i])
+    neighbor_contribution(p_src[i], p_dst[i], p_links[i])
   end
 
   var err : double = 0.0
   __demand(__index_launch)
   for i = 0, config.parallelism do
-    err += update_page_rank(p_pages[i], config.damp, config.num_pages)
+    err += update_page_rank(p_pages[i], config.damp, config.num_pages, config.error_bound)
   end
 
   return err
@@ -198,19 +200,18 @@ task toplevel()
   -- Add partitions idx region
 
   var num_p : uint32 = config.parallelism
-  var colors = isspace(int1d, num_p)
-
-  -- independent partitions for nodes(source pages)
-  var p_pages = partition(equal, r_pages, colors)
-
+  var colors = ispace(int1d, num_p)
 
   -- Initialize the page graph from a file
   initialize_graph(r_pages, r_links, config.damp, config.num_pages, config.input)
 
+  -- independent partitions for nodes(source pages)
+  var p_pages = partition(equal, r_pages, colors)
+
   -- dependent partitions for nodes(dst) and links
   var p_dst   = p_pages
-  var p_links = preimage(r_links, p_dst, r_links.dst)
-  var p_src   = image(r_pages, p_links, r_links.dst)
+  var p_links = preimage(r_links, p_dst, r_links.dst_page)
+  var p_src   = image(r_pages, p_links, r_links.dst_page)
 
   var num_iterations = 0
   var converged = false
