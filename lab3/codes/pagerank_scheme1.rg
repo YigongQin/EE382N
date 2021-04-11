@@ -213,13 +213,13 @@ task toplevel()
     --
     __demand(__index_launch)
     for i = 0, config.parallelism do
-      neighbor_contribution(p_src[i], p_dst[i], p_links[i])
+      neighbor_contribution(page_src_par[i], page_dest_par[i], link_par[i])
     end
 
     var err : double = 0.0
     __demand(__index_launch)
     for i = 0, config.parallelism do
-      err += update_page_rank(p_pages[i], config.damp, config.num_pages, config.error_bound)
+      err += update_page_rank(page_par[i], config.damp, config.num_pages, config.error_bound)
     end
 
     -- err = update_all(config, r_pages, r_links, p_pages, p_links, p_src, p_dst)
