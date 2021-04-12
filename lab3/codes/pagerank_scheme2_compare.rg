@@ -122,13 +122,13 @@ where
   reads writes(r_pages.{rank, upd_rank, num_out_links}),
   reads(r_links.{src, dst})
 do
-  __demand(__parallel)
+  __demand(__index_launch)
   for i = 0, config.parallelism do
     update_ranks(p_src[i], p_dst[i], p_links[i], config.damp)
   end
 
   var sum_delta_sq : double = 0.0
-  __demand(__parallel)
+  __demand(__index_launch)
   for i = 0, config.parallelism do
     sum_delta_sq += calc_error(p_pages[i], config.num_pages, config.damp)
   end
