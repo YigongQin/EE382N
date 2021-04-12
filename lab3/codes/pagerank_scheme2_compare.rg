@@ -6,27 +6,23 @@ local PageRankConfig = require("pagerank_config")
 local c = regentlib.c
 
 fspace Page {
-  rank         : double;
+  rank          : double;
   --
   -- TODO: Add more fields as you need.
-  -- num_out: connection with others as denominator
-  -- neighb_src: updated rank
-  num_out : uint64,
-  neighb_src : double,
+  --
+  num_out_links : uint64;
+  upd_rank      : double;
 }
-
 
 --
 -- TODO: Define fieldspace 'Link' which has two pointer fields,
 --       one that points to the source and another to the destination.
 --
--- fspace Link(...) { ... }
-fspace Link(r_src: region(Page), r_dst: region(Page))
-{
-  src_page : ptr(Page, r_src),
-  dst_page: ptr(Page, r_dst),
+fspace Link(r_src : region(Page),
+            r_dst : region(Page)) {
+  src : ptr(Page, r_src),
+  dst : ptr(Page, r_dst),
 }
-
 
 terra skip_header(f : &c.FILE)
   var x : uint64, y : uint64
@@ -52,8 +48,8 @@ do
   for page in r_pages do
     page.rank = 1.0 / num_pages
     -- TODO: Initialize your fields if you need
-    page.num_out = 0
-    page.neighb_src = 0.0
+    page.num_out_links = 0
+    page.upd_rank = (1.0 - damp) / num_pages
   end
 
   var f = c.fopen(filename, "rb")
@@ -66,10 +62,9 @@ do
     --
     -- TODO: Initialize the link with 'src_page' and 'dst_page'
     --
-    link.src_page = src_page
-    link.dst_page = dst_page 
-    link.src_page.num_out += 1
-
+    link.src = src_page
+    link.dst = dst_page
+    link.src.num_out_links += 1
   end
   c.fclose(f)
   var ts_stop = c.legion_get_current_time_in_micros()
@@ -79,87 +74,66 @@ end
 --
 -- TODO: Implement PageRank. You can use as many tasks as you want.
 --
--- Comment: Have been merged into initialize_graph
--- task1: find the number of outgoing links for every page p
--- for every edge, find the source, add its num_out
-task count_out_link(r_pages : region(Page),r_links : region(Link(r_pages, r_pages)))
-where reads (r_pages, r_links), reduces+(r_pages.num_out) do
-  for link in r_links do
-    link.src_page.num_out += 1
-  end  
-  --for page in r_pages do
-  --  c.printf("number of out link %d \n", page.num_out)
-  --end 
- 
-end
-
-
--- task2: for evevry link, calculate the src contribution to the dest, add to dest.neighb_src
--- has dependency on task1
-
--- error is here
-task neighbor_contribution(r_src : region(Page),
-                           r_dst : region(Page),
-                           r_links : region(Link(r_src, r_dst))
-)
-where reads (r_src.{rank, num_out}, r_links.{src_page, dst_page}), reduces+(r_dst.neighb_src) do
-  for link in r_links do
-    link.dst_page.neighb_src += link.src_page.rank/link.src_page.num_out
-  end
-  --for page in r_pages do
-  --  c.printf("neighbor weights %f \n", page.neighb_src)
-  --end
-end
-
---task3: update the page rank and check residual
-task update_page_rank(r_pages : region(Page), damp : double,
-                     num_pages : uint64, error_bound : double) 
+task update_ranks(r_src   : region(Page),
+                  r_dst   : region(Page),
+                  r_links : region(Link(r_src, r_dst)),
+                  damp    : double)
 where
-  reads writes(r_pages.{rank, neighb_src})
+  reads(r_links.{src, dst}),
+  reads(r_src.{rank, num_out_links}),
+  reduces +(r_dst.upd_rank)
 do
-  var residual : double = 0.0
-  var temp : double
-  for page in r_pages do
-     temp = (1.0-damp)/num_pages + damp*page.neighb_src
-     residual += (temp-page.rank)*(temp-page.rank)
-     page.rank = temp
-     -- remeber to clean up the neighb_src
-     page.neighb_src = 0.0
+  for link in r_links do
+    --c.printf("%lf\n", link.src.rank)
+    --c.printf("%d\n", link.src.num_out_links)
+    --c.printf("%lf\n", damp * link.src.rank / link.src.num_out_links)
+    --c.printf("%lf\n", link.dst.upd_rank)
+    link.dst.upd_rank += damp * (link.src.rank / link.src.num_out_links)
+    --c.printf("%lf\n", link.dst.upd_rank)
   end
-  
-  return residual
-  --if residual<error_bound*error_bound then
-  --return true
-  --else
-  --return false
-  --end
 end
 
---task4: update all in one piece
-task update_all(config  : PageRankConfig,
-                r_pages: region(Page),
-                r_links: region(Link(wild, wild)),
-                p_pages: partition(disjoint, r_pages, ispace(int1d)),
-                p_links: partition(disjoint, r_links, ispace(int1d)),
-                p_src  : partition(aliased, r_pages, ispace(int1d)),
-                p_dst  : partition(disjoint, r_pages, ispace(int1d))
-)
-
-where reads writes(r_pages.{rank, neighb_src, num_out}),
-      reads (r_links.{src_page, dst_page})
+task calc_error(r_pages   : region(Page),
+                num_pages : uint64,
+                damp      : double)
+where
+  reads writes(r_pages.{rank, upd_rank})
 do
-  __demand(__index_launch)
+  var sum_delta_sq : double = 0.0
+  for page in r_pages do
+    var delta = page.upd_rank - page.rank
+    sum_delta_sq += delta * delta
+    page.rank = page.upd_rank
+    page.upd_rank = (1.0 - damp) / num_pages
+  end
+  return sum_delta_sq
+end
+
+task time_step(config  : PageRankConfig,
+               r_pages : region(Page),
+               r_links : region(Link(wild, wild)),
+               p_pages : partition(disjoint, r_pages, ispace(int1d)),
+               p_links : partition(disjoint, r_links, ispace(int1d)),
+--               p_src   : partition(disjoint, r_pages, ispace(int1d)),
+--               p_dst   : partition(aliased, r_pages, ispace(int1d)))
+               p_src   : partition(aliased, r_pages, ispace(int1d)),
+               p_dst   : partition(disjoint, r_pages, ispace(int1d)))
+where
+  reads writes(r_pages.{rank, upd_rank, num_out_links}),
+  reads(r_links.{src, dst})
+do
+  __demand(__parallel)
   for i = 0, config.parallelism do
-    neighbor_contribution(p_src[i], p_dst[i], p_links[i])
+    update_ranks(p_src[i], p_dst[i], p_links[i], config.damp)
   end
 
-  var err : double = 0.0
-  __demand(__index_launch)
+  var sum_delta_sq : double = 0.0
+  __demand(__parallel)
   for i = 0, config.parallelism do
-    err += update_page_rank(p_pages[i], config.damp, config.num_pages, config.error_bound)
+    sum_delta_sq += calc_error(p_pages[i], config.num_pages, config.damp)
   end
 
-  return err
+  return sum_delta_sq
 end
 
 task dump_ranks(r_pages  : region(Page),
@@ -197,40 +171,39 @@ task toplevel()
   --
   -- TODO: Create partitions for links and pages.
   --       You can use as many partitions as you want.
-  -- Add partitions idx region
-
-  -- var num_p : uint32 = config.parallelism
+  --
   var colors = ispace(int1d, config.parallelism)
+
+  -- independent (equal) partitions of source pages (nodes)
+  var p_pages = partition(equal, r_pages, colors)
 
   -- Initialize the page graph from a file
   initialize_graph(r_pages, r_links, config.damp, config.num_pages, config.input)
 
-  -- independent partitions for nodes(source pages)
-  var p_pages = partition(equal, r_pages, colors)
+  -- dependent partitions of edges/dst derived from src partitions
+--  var p_src = p_pages
+--  var p_links = preimage(r_links, p_pages, r_links.src)
+--  var p_dst = image(r_pages, p_links, r_links.dst)
 
-  -- dependent partitions for nodes(dst) and links
-  var p_dst   = p_pages
-  var p_links = preimage(r_links, p_dst, r_links.dst_page)
-  var p_src   = image(r_pages, p_links, r_links.src_page)
+  var p_dst = p_pages
+  var p_links = preimage(r_links, p_dst, r_links.dst)
+  var p_src = image(r_pages, p_links, r_links.src)
 
   var num_iterations = 0
   var converged = false
-  -- var err: double = 0.0
   __fence(__execution, __block) -- This blocks to make sure we only time the pagerank computation
   var ts_start = c.legion_get_current_time_in_micros()
-  count_out_link(r_pages,r_links)
   while not converged do
     num_iterations += 1
     --
     -- TODO: Launch the tasks that you implemented above.
     --       (and of course remove the break statement here.)
     --
-    var err = update_all(config, r_pages, r_links, p_pages, p_links, p_src, p_dst)
+    var norm = time_step(config, r_pages, r_links, p_pages, p_links, p_src, p_dst)
+--    update_ranks(r_pages, r_pages, r_links, config.damp)
+--    var norm = calc_error(r_pages, config.num_pages, config.damp)
 
-    converged = (c.sqrt(err) <= config.error_bound) or (num_iterations >= config.max_iterations)
-    -- if num_iterations== config.max_iterations or err<config.error_bound*config.error_bound then
-    --   break
-    -- end
+    converged = (c.sqrt(norm) <= config.error_bound) or (num_iterations >= config.max_iterations)
   end
   __fence(__execution, __block) -- This blocks to make sure we only time the pagerank computation
   var ts_stop = c.legion_get_current_time_in_micros()
