@@ -141,8 +141,8 @@ task update_all(config  : PageRankConfig,
                 r_links: region(Link(wild, wild)),
                 p_pages: partition(disjoint, r_pages, ispace(int1d)),
                 p_links: partition(disjoint, r_links, ispace(int1d)),
-                p_src  : partition(aliased, r_pages, ispace(int1d)),
-                p_dst  : partition(disjoint, r_pages, ispace(int1d))
+                p_src  : partition(disjoint, r_pages, ispace(int1d)),
+                p_dst  : partition(aliased, r_pages, ispace(int1d))
 )
 
 where reads writes(r_pages.{rank, neighb_src, num_out}),
@@ -209,9 +209,9 @@ task toplevel()
   var p_pages = partition(equal, r_pages, colors)
 
   -- dependent partitions for nodes(dst) and links
-  var p_dst   = p_pages
-  var p_links = preimage(r_links, p_dst, r_links.dst_page)
-  var p_src   = image(r_pages, p_links, r_links.src_page)
+  var p_src   = p_pages
+  var p_links = preimage(r_links, p_src, r_links.src_page)
+  var p_dst   = image(r_pages, p_links, r_links.dst_page)
 
   var num_iterations = 0
   var converged = false
