@@ -20,7 +20,7 @@ int main(int argc, char** argv)
     // step 2 (setup): pass the parameters to constant memory and 
     // allocate and initialize 1_D arrays on CPU/GPU  x: size nx+1, range [0,lxd], y: size ny+1, range [0, lyd]
     // you should get dx = dy = lxd/nx = lyd/ny
-    // allocate 1_D arrays on CPU: psi, phi, U of size (nx+2)*(ny+2) -- these are for I/O
+    // allocate 1_D arrays on CPU: psi, phi, U of size (nx+3)*(ny+3) -- these are for I/O
     // allocate 1_D arrays on GPU: psi_old/psi_new, phi_old/phi_new, U_old/U_new, same size as before
 
 
