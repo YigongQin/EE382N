@@ -6,6 +6,8 @@ Created on Fri May 29 11:10:53 2020
 @author: yigongqin
 """
 
+## NOTE: this is copied from python input, be careful when write C++ code
+
     G = 0.02                        # thermal gradient        K/um
     R = 50                          # pulling speed           um/s
     delta = 0.02                    # strength of the surface tension anisotropy         

@@ -12,7 +12,7 @@ void printCudaInfo();
 
 int main(int argc, char** argv)
 {
-    // All the variables should be float
+    // All the variables should be float (except for nx, ny, Mt, nts, ictype, which should be integer)
 
     // step 1 (input): read or calculate  parameters from "input"
     // and print out information: lxd, nx, ny, Mt
