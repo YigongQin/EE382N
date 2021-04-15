@@ -1,5 +1,5 @@
-EXECUTABLE := cudaScan
-CU_FILES   := scan.cu
+EXECUTABLE := phase_field
+CU_FILES   := PF.cu
 CU_DEPS    :=
 CC_FILES   := main.cpp
 
@@ -41,7 +41,7 @@ NVCC=$(CUDA_PATH)/bin/nvcc -ccbin=$(CXX)
 NVCC_FLAGS=-O3 -m64 $(GENCODE_FLAGS) $(INC_FLAGS)
 
 
-OBJS=$(OBJDIR)/main.o $(OBJDIR)/scan.o 
+OBJS=$(OBJDIR)/main.o $(OBJDIR)/PF.o 
 
 
 .PHONY: dirs clean
