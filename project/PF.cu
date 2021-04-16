@@ -236,7 +236,7 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
 
 // U equation
 __global__ void
-rhs_U(float* ph, float* U, float* U_new, float* dpsi, int fnx, int fny ){
+rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
 
   int C = blockIdx.x * blockDim.x + threadIdx.x;
   int j=C/fnx;
@@ -327,14 +327,22 @@ void time_marching(){
 
    // initialize or load
 
-   int blocksize = 256;
-   int num_block_2d = (fnx*fny+blocksize-1)/blocksize;
-   int num_block_1d = (fnx+fny+blocksize-1)/blocksize;
+   int blocksize_1d = 256;
+   int blocksize_2d = 512;
+   int num_block_2d = (fnx*fny+blocksize_2d-1)/blocksize_2d;
+   int num_block_1d = (fnx+fny+blocksize_1d-1)/blocksize_1d;
 
-   for (int kt=0; kt<Mt; kt++){
+   for (int kt=0; kt<Mt/2; kt++){
 
-     rhs_psi<<<>>>(psi_old, phi_old, U_old, psi_new, phi_new, y, dpsi, fnx, fny, 2*kt ) 
-     set_BC(float* ps, float* ph, float* U, float* dpsi, infnx, fny)
+     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y, dpsi, fnx, fny, 2*kt ); 
+     set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
+     rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi);
+
+
+     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y, dpsi, fnx, fny, 2*kt+1 ); 
+     set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
+     rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi);
+
 
    }
 
