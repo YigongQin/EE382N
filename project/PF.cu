@@ -137,7 +137,7 @@ atheta(float ux, float uz){
    float MAG_sq = (ux2 + uz2);
    float MAG_sq2= MAG_sq*MAG_sq;
    if (MAG_sq > cP.eps){
-         return cP.a_s*( 1.0f + cP.epsilon*(ux2*ux2 + uz2*uz2) / MAG_sq2);
+         return cP.a_s*( 1.0f + cP.epsilon*(ux2*ux2 + uz2*uz2) / MAG_sq2);}
    else {return 1.0f;}
 }
 
@@ -151,8 +151,8 @@ aptheta(float ux, float uz){
    float uz2 = uzr*uzr;
    float MAG_sq = (ux2 + uz2);
    float MAG_sq2= MAG_sq*MAG_sq;
-   if (MAG_sq > eps){
-         return -cP.a_12*uxr*uzr*(ux2 - uz2) / MAG_sq2;
+   if (MAG_sq > cP.eps){
+         return -cP.a_12*uxr*uzr*(ux2 - uz2) / MAG_sq2;}
    else {return 0.0f;}
 }
 
