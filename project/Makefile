@@ -40,6 +40,7 @@ NVCC_LDFLAGS=-L$(CUDA_PATH)/lib64/ -lcudart -Wl,-rpath=$(CUDA_PATH)/lib64
 NVCC=$(CUDA_PATH)/bin/nvcc -ccbin=$(CXX) 
 NVCC_FLAGS=-O3 -m64 $(GENCODE_FLAGS) $(INC_FLAGS)
 
+CXXFLAGS += -I$(CUDA_PATH)/include/ -L$(CUDA_PATH)/lib64/ -lcudart
 
 OBJS=$(OBJDIR)/main.o $(OBJDIR)/PF.o 
 
