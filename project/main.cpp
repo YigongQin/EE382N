@@ -3,6 +3,8 @@
 #include <getopt.h>
 #include <string>
 #include <cstring>
+#include <map>
+#include<functional>
 
 #include "CycleTimer.h"
 
@@ -10,9 +12,24 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
-//#include <mat.h> 
+#include <mat.h> 
+
+#include <cuda.h> // add cuda support
+#include <cuda_runtime.h>
+#include <driver_functions.h>
 
 void printCudaInfo();
+
+// add function for easy retrieving params
+template<class T>
+T get(std::stringstream& ss) 
+{
+    T t; 
+    ss<<t; 
+    if (!ss) // if it failed to read
+        throw std::runtime_error("could not parse parameter");
+    return t;
+}
 
 void getParam(std::string lineText, std::string key, float& param){
     std::stringstream iss(lineText);
@@ -40,7 +57,7 @@ int main(int argc, char** argv)
     char* fileName=argv[1];
     std::string lineText;
 
-    std::ifstream ReadFile(fileName);
+    std::ifstream parseFile(fileName);
     float param_G;
     
     float param_R; //= 50                          # pulling speed           um/s
@@ -79,29 +96,31 @@ int main(int argc, char** argv)
     float param_U0;// = -0.3                		# initial value for U, -1 < U0 < 0
     float param_nts;// = 10				# number snapshots to save, Mt/nts must be int
     float param_ictype;// = 0                   	# initial condtion: 0 for semi-circular, 1 for planar interface, 2 for sum of sines
-    while (std::getline (ReadFile, lineText)) {
-    // Output the text from the file
-    //std::cout << lineText<<std::endl;
-    getParam(lineText, "G", param_G);
-    getParam(lineText, "R", param_R); 
-    getParam(lineText, "delta", param_delta); 
-    getParam(lineText, "k", param_k); 
-    getParam(lineText, "c_infm", param_c_infm); 
-    getParam(lineText, "Dl", param_Dl); 
-    getParam(lineText, "d0", param_d0); 
-    getParam(lineText, "W0", param_W0);  
-    getParam(lineText, "c_infty", param_c_infty);
-    getParam(lineText, "eps", param_eps);
-    getParam(lineText, "alpha0", param_alpha0);
-    getParam(lineText, "dx", param_dx);
-    getParam(lineText, "asp_ratio", param_asp_ratio);
-    getParam(lineText, "nx", param_nx);
-    getParam(lineText, "Mt", param_Mt);
-    getParam(lineText, "eta", param_eta);
-    getParam(lineText, "U0", param_U0);
-    getParam(lineText, "nts", param_nts);
-    getParam(lineText, "ictype", param_ictype);
+
+    while (parseFile.good()){
+        std::getline (parseFile, lineText);
+        // Output the text from the file
+        getParam(lineText, "G", param_G);
+        getParam(lineText, "R", param_R); 
+        getParam(lineText, "delta", param_delta); 
+        getParam(lineText, "k", param_k); 
+        getParam(lineText, "c_infm", param_c_infm); 
+        getParam(lineText, "Dl", param_Dl); 
+        getParam(lineText, "d0", param_d0); 
+        getParam(lineText, "W0", param_W0);  
+        getParam(lineText, "c_infty", param_c_infty);
+        getParam(lineText, "eps", param_eps);
+        getParam(lineText, "alpha0", param_alpha0);
+        getParam(lineText, "dx", param_dx);
+        getParam(lineText, "asp_ratio", param_asp_ratio);
+        getParam(lineText, "nx", param_nx);
+        getParam(lineText, "Mt", param_Mt);
+        getParam(lineText, "eta", param_eta);
+        getParam(lineText, "U0", param_U0);
+        getParam(lineText, "nts", param_nts);
+        getParam(lineText, "ictype", param_ictype);
     }
+    
     std::cout<<"G = "<<param_G<<std::endl;
     std::cout<<"R = "<<param_R<<std::endl;
     std::cout<<"delta = "<<param_delta<<std::endl;
@@ -122,7 +141,7 @@ int main(int argc, char** argv)
     std::cout<<"nts = "<<param_nts<<std::endl;
     std::cout<<"ictype = "<<param_ictype<<std::endl;
     // Close the file
-    ReadFile.close();
+    parseFile.close();
     param_lT = param_c_infm*( 1.0/param_k-1 )/param_G;//       # thermal length           um
     param_lamd = 5*sqrt(2)/8*param_W0/param_d0;//     # coupling constant
     param_tau0 = pow(0.6267*param_lamd*param_W0,2)/param_Dl; //    # time scale  
@@ -147,10 +166,21 @@ int main(int argc, char** argv)
     // step 2 (setup): pass the parameters to constant memory and 
     // allocate and initialize 1_D arrays on CPU/GPU  x: size nx+1, range [0,lxd], y: size ny+1, range [0, lyd]
     // you should get dx = dy = lxd/nx = lyd/ny
+
     // allocate 1_D arrays on CPU: psi, phi, U of size (nx+3)*(ny+3) -- these are for I/O
-    // allocate 1_D arrays on GPU: psi_old/psi_new, phi_old/phi_new, U_old/U_new, same size as before
+    // x and y would be allocate to the shared memory?
+    float* x = NULL;
+    float* y = NULL;
     int length_x=(int)param_nx+1;
-    float* x=(float*) malloc(length_x* sizeof(float));
+    int length_y=(int)param_ny+1;
+
+    cudaMallocManaged((void**)&x, length_x* sizeof(float));
+    cudaMallocManaged((void**)&y, length_y* sizeof(float));
+    
+    // float* x=(float*) malloc(length_x* sizeof(float));
+    // float* y=(float*) malloc(length_y* sizeof(float));
+
+    // x
     for(int i=0; i<(int)param_nx+1; i++){
         x[i]=i*param_lxd/param_nx; 
     }
@@ -161,8 +191,7 @@ int main(int argc, char** argv)
     }
     std::cout<<std::endl;
 
-    int length_y=(int)param_ny+1;
-    float* y=(float*) malloc(length_y* sizeof(float));
+    // y
     for(int i=0; i<(int)param_ny+1; i++){
         y[i]=i*param_lyd/param_ny; 
     }
@@ -182,23 +211,57 @@ int main(int argc, char** argv)
         psi[i]=0.0;
         phi[i]=0.0;
         U[i]=0.0;
-    }
+    }    
+
+    // allocate 1_D arrays on GPU: psi_old/psi_new, phi_old/phi_new, U_old/U_new, same size as before
+    float* psi_old = NULL;
+    float* psi_new = NULL;
+    float* U_old = NULL;
+    float* U_new = NULL;
+    float* phi_old = NULL;
+    float* phi_new = NULL;
+    cudaMalloc((void**)&psi_old, length* sizeof(float));
+    cudaMalloc((void**)&psi_new, length* sizeof(float));
+    cudaMalloc((void**)&U_old, length* sizeof(float));
+    cudaMalloc((void**)&U_new, length* sizeof(float));
+    cudaMalloc((void**)&phi_old, length* sizeof(float));
+    cudaMalloc((void**)&phi_new, length* sizeof(float));
+
+    // copy data from host to device to initialize old version
+    cudaMemcpy((void *)psi_old, (void *)psi, length* sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy((void *)U_old, (void *)U, length* sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy((void *)phi_old, (void *)phi, length* sizeof(float), cudaMemcpyHostToDevice);
+
     // step 3 (time marching): call the kernels Mt times
     
     // step 4: save the psi, phi, U to a .mat file
-    // MATFile *pmatFile = NULL;
-    // mxArray *pMxArray = NULL;
-    // int M=(int)param_nx+3;
-    // int N=(int)param_ny+3);
-    // pmatFile = matOpen("out.mat","w");
-    // pMxArray = mxCreateDoubleMatrix(M, N, mxREAL);
-    // mxSetData(pMxArray, psi);
-    // matPutVariable(pmatFile, "psi", pMxArray);
-    // mxSetData(pMxArray, phi);
-    // matPutVariable(pmatFile, "psi", pMxArray);
-    // mxSetData(pMxArray, U);
-    // matPutVariable(pmatFile, "psi", pMxArray);
-    // matClose(pmatFile);
+    MATFile *pmat = NULL;
+    mxArray *pMxArray = NULL;
+
+    const char *file = "output.mat";
+    printf("Creating file %s...\n\n", file);
+    pmat = matOpen(file, "w");
+
+    int M=(int)param_nx+3;
+    int N=(int)param_ny+3;
+    pMxArray = mxCreateDoubleMatrix(M, N, mxREAL);
+
+    mxSetData(pMxArray, psi_old);
+    matPutVariable(pmat, "psi", pMxArray);
+    mxSetData(pMxArray, phi_old);
+    matPutVariable(pmat, "phi", pMxArray);
+    mxSetData(pMxArray, U_old);
+    matPutVariable(pmat, "U", pMxArray);
+
+    // clean up before exit
+    mxDestroyArray(pMxArray);
+
+    if (matClose(pmat) != 0) {
+        printf("Error closing file %s\n",file);
+        return(EXIT_FAILURE);
+    }
+
+    printf("Done\n");
 
     return 0;
 }
