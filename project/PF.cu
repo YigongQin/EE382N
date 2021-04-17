@@ -130,14 +130,14 @@ initialize(float* ps_old, float* ph_old, float* U_old, float* ps_new, float* ph_
 __device__ float
 atheta(float ux, float uz){
   
-   float ux2 =  cosa*ux + sina*uz;
+   float ux2 = cP.cosa*ux + cP.sina*uz;
          ux2 = ux2*ux2;
-   float uz2 = -sina*ux + cosa*uz;
+   float uz2 = -cP.sina*ux + cP.cosa*uz;
          uz2 = uz2*uz2;
    float MAG_sq = (ux2 + uz2);
    float MAG_sq2= MAG_sq*MAG_sq;
-   if (MAG_sq > eps){
-         return a_s*( 1.0f + epsilon*(ux2*ux2 + uz2*uz2) / MAG_sq2);
+   if (MAG_sq > cP.eps){
+         return cP.a_s*( 1.0f + cP.epsilon*(ux2*ux2 + uz2*uz2) / MAG_sq2);
    else {return 1.0f;}
 }
 
@@ -145,14 +145,14 @@ atheta(float ux, float uz){
 __device__ float
 aptheta(float ux, float uz){
 
-   float uxr =  cosa*ux + sina*uz;
+   float uxr = cP.cosa*ux + cP.sina*uz;
    float ux2 = uxr*uxr;
-   float uzr = -sina*ux + cosa*uz;
+   float uzr = -cP.sina*ux + cP.cosa*uz;
    float uz2 = uzr*uzr;
    float MAG_sq = (ux2 + uz2);
    float MAG_sq2= MAG_sq*MAG_sq;
    if (MAG_sq > eps){
-         return -a_12*uxr*uzr*(ux2 - uz2) / MAG_sq2;
+         return -cP.a_12*uxr*uzr*(ux2 - uz2) / MAG_sq2;
    else {return 0.0f;}
 }
 
@@ -256,23 +256,23 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         #
         # =============================================================*/
 
-        Up = (y[j] - R_tilde * (nt*dt) )/lT_tilde;
+        Up = (y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
 
-        rhs_psi = ((JR-JL) + (JT-JB) + extra) * hi*hi + \
-                   sqrt2*ph[C] - lamd*(1.0f-ph[C]*ph[C])*sqrt2*(U[C] + Up);
+        rhs_psi = ((JR-JL) + (JT-JB) + extra) * cP.hi*cP.hi + \
+                   cP.sqrt2*ph[C] - cP.lamd*(1.0f-ph[C]*ph[C])*cP.sqrt2*(U[C] + Up);
 
         /*# =============================================================
         #
         # 4. dpsi/dt term
         #
         # =============================================================*/
-        tp = (1.0f-(1.0f-k)*Up);
-        if (tp >= k){tau_psi = tp*A2;}
-               else {tau_psi = k*A2;}
+        tp = (1.0f-(1.0f-cP.k)*Up);
+        if (tp >= cP.k){tau_psi = tp*A2;}
+               else {tau_psi = cP.k*A2;}
         
         dpsi[C] = rhs_psi / tau_psi; 
         
-        ps_new[C] = ps[C] +  dt * dpsi[C];
+        ps_new[C] = ps[C] +  cP.dt * dpsi[C];
         ph_new[C] = tanhf(ps_new[C]/sqrt2);
         }
 } 
@@ -291,6 +291,8 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         int L=C-1;
         int T=C+fnx;
         int B=C-fnx;
+        float hi = cP.hi;
+        float Dl_tilde = cP.Dl_tilde;
 
         // =============================================================
         // 1. ANISOTROPIC DIFFUSION
@@ -355,10 +357,10 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         jat_jm = 0.5f*(1.0f+(1.0f-k)*U[B])*(1.0f-ph[B]*ph[B])*dpsi[B];              
         UB = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[B])*(U[C]-U[B]) + 0.5f*(jat + jat_jm)*nz;
         
-        rhs_U = ( (UR-UL) + (UT-UB) ) * hi + sqrt2 * jat;
-        tau_U = (1.0f+k) - (1.0f-k)*ph[C];
+        rhs_U = ( (UR-UL) + (UT-UB) ) * hi + cP.sqrt2 * jat;
+        tau_U = (1.0f+cP.k) - (1.0f-cP.k)*ph[C];
 
-        U_new[C] = U[C] + dt * ( rhs_U / tau_U );
+        U_new[C] = U[C] + cP.dt * ( rhs_U / tau_U );
 
        }
 }
@@ -405,7 +407,7 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
 }
 
 
-void time_marching(){
+void time_marching(GlobalConstants params, int fnx, int fny){
 
    // initialize or load
 
@@ -414,7 +416,7 @@ void time_marching(){
    int num_block_2d = (fnx*fny+blocksize_2d-1)/blocksize_2d;
    int num_block_1d = (fnx+fny+blocksize_1d-1)/blocksize_1d;
 
-   for (int kt=0; kt<Mt/2; kt++){
+   for (int kt=0; kt<params.Mt/2; kt++){
 
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt ); 
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
