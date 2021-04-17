@@ -13,20 +13,53 @@
 #include <sstream>
 #include <cmath>
 // #include <mat.h> 
+using namespace std;
 
-#include <cuda.h> // add cuda support
-#include <cuda_runtime.h>
-#include <driver_functions.h>
-
-void setup(float param_nx, float param_ny, float param_G, float param_R, float param_delta,
-    float param_k, float param_c_infm, float param_Dl, float param_d0, float param_W0, 
-    float param_lT, float param_lamd, float param_tau0, float param_c_infty, float param_R_tilde,
-    float param_Dl_tilde, float param_lT_tilde, float param_eps, float param_alpha0, float param_dx, 
-    float param_dt, float param_asp_ratio, float param_lxd, float param_lyd, float param_Mt,
-    float param_eta, float param_U0, float param_nts, float param_ictype,
-    float* x, float* y, float* phi, float* psi,float* U);
+void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
 
 void printCudaInfo();
+
+struct GlobalConstants {
+  int nx;
+  int ny;
+  int Mt;
+  int nts; 
+  int ictype;
+  float G;
+  float R;
+  float delta;
+  float k;
+  float c_infm;
+  float Dl;
+  float d0;
+  float W0;
+  float lT;
+  float lamd; 
+  float tau0;
+  float c_infty; 
+  float R_tilde;
+  float Dl_tilde; 
+  float lT_tilde; 
+  float eps; 
+  float alpha0; 
+  float dx; 
+  float dt; 
+  float asp_ratio; 
+  float lxd;
+  float lx; 
+  float lyd; 
+  float eta; 
+  float U0; 
+  // parameters that are not in the input file
+  float hi;
+  float cosa;
+  float sina;
+  float sqrt2;
+  float a_s;
+  float epsilon;
+  float a_12;
+
+};
 
 // add function for easy retrieving params
 template<class T>
@@ -66,110 +99,84 @@ int main(int argc, char** argv)
     std::string lineText;
 
     std::ifstream parseFile(fileName);
-    float param_G;
-    
-    float param_R; //= 50                          # pulling speed           um/s
-    float param_delta; //= 0.02                    # strength of the surface tension anisotropy         
-    float param_k;// = 0.14                        # interface solute partition coefficient
-    float param_c_infm;// = 1.519                  # shift in melting temperature     K
-    float param_Dl;// = 3000                       # liquid diffusion coefficient      um**2/s
-    float param_d0;// = 0.02572                    # capillary length -- associated with GT coefficient   um
-    float param_W0;// = 0.9375  
-    float param_lT;// = c_infm*( 1.0/k-1 )/G       # thermal length           um
-    float param_lamd;// = 5*np.sqrt(2)/8*W0/d0     # coupling constant
-    float param_tau0;// = 0.6267*lamd*W0**2/Dl
-    float param_c_infty;// = 2.45e-3
-    float param_R_tilde;// = R*tau0/W0
-    float param_Dl_tilde;// = Dl*tau0/W0**2
-    float param_lT_tilde;// = lT/W0
-    
-    float param_eps;// = 1e-8                      	# divide-by-zero treatment
-    float param_alpha0;// = 0                    	# misorientation angle in degree
-    
-    float param_dx;// = 1.2                            # mesh width
-    float param_dt;// = 0.8*(dx)**2/(4*Dl_tilde)       # time step size for forward euler
 
-    float param_asp_ratio;// = 4                  	# aspect ratio
-    float param_nx;// = 128            		# number of cells in x, number of grids is nx+1
-    float param_ny;// = asp_ratio*nx
-
-
-    float param_lxd;// = dx*W0*nx                     # horizontal length in micron
-    float param_lyd;// = asp_ratio*lxd
-
-    float param_Mt;// = 10000                      	# total  number of time steps
-
-    float param_eta;// = 0.0                		# magnitude of noise
-
-    float param_U0;// = -0.3                		# initial value for U, -1 < U0 < 0
-    float param_nts;// = 10				# number snapshots to save, Mt/nts must be int
-    float param_ictype;// = 0                   	# initial condtion: 0 for semi-circular, 1 for planar interface, 2 for sum of sines
-
+    GlobalConstants params;
     while (parseFile.good()){
         std::getline (parseFile, lineText);
         // Output the text from the file
-        getParam(lineText, "G", param_G);
-        getParam(lineText, "R", param_R); 
-        getParam(lineText, "delta", param_delta); 
-        getParam(lineText, "k", param_k); 
-        getParam(lineText, "c_infm", param_c_infm); 
-        getParam(lineText, "Dl", param_Dl); 
-        getParam(lineText, "d0", param_d0); 
-        getParam(lineText, "W0", param_W0);  
-        getParam(lineText, "c_infty", param_c_infty);
-        getParam(lineText, "eps", param_eps);
-        getParam(lineText, "alpha0", param_alpha0);
-        getParam(lineText, "dx", param_dx);
-        getParam(lineText, "asp_ratio", param_asp_ratio);
-        getParam(lineText, "nx", param_nx);
-        getParam(lineText, "Mt", param_Mt);
-        getParam(lineText, "eta", param_eta);
-        getParam(lineText, "U0", param_U0);
-        getParam(lineText, "nts", param_nts);
-        getParam(lineText, "ictype", param_ictype);
+        getParam(lineText, "G", params.G);
+        getParam(lineText, "R", params.R); 
+        getParam(lineText, "delta", params.delta); 
+        getParam(lineText, "k", params.k); 
+        getParam(lineText, "c_infm", params.c_infm); 
+        getParam(lineText, "Dl", params.Dl); 
+        getParam(lineText, "d0", params.d0); 
+        getParam(lineText, "W0", params.W0);  
+        getParam(lineText, "c_infty", params.c_infty);
+        getParam(lineText, "eps", params.eps);
+        getParam(lineText, "alpha0", params.alpha0);
+        getParam(lineText, "dx", params.dx);
+        getParam(lineText, "asp_ratio", params.asp_ratio);
+        getParam(lineText, "nx", params.nx);
+        getParam(lineText, "Mt", params.Mt);
+        getParam(lineText, "eta", params.eta);
+        getParam(lineText, "U0", params.U0);
+        getParam(lineText, "nts", params.nts);
+        getParam(lineText, "ictype", params.ictype);
     }
     
-    std::cout<<"G = "<<param_G<<std::endl;
-    std::cout<<"R = "<<param_R<<std::endl;
-    std::cout<<"delta = "<<param_delta<<std::endl;
-    std::cout<<"k = "<<param_k<<std::endl;
-    std::cout<<"c_infm = "<<param_c_infm<<std::endl;
-    std::cout<<"Dl = "<<param_Dl<<std::endl;
-    std::cout<<"d0 = "<<param_d0<<std::endl;
-    std::cout<<"W0 = "<<param_W0<<std::endl;
-    std::cout<<"c_infty = "<<param_c_infty<<std::endl;
-    std::cout<<"eps = "<<param_eps<<std::endl;
-    std::cout<<"alpha0 = "<<param_alpha0<<std::endl;
-    std::cout<<"dx = "<<param_dx<<std::endl;
-    std::cout<<"asp_ratio = "<<param_asp_ratio<<std::endl;
-    std::cout<<"nx = "<<param_nx<<std::endl;
-    std::cout<<"Mt = "<<param_Mt<<std::endl;
-    std::cout<<"eta = "<<param_eta<<std::endl;
-    std::cout<<"U0 = "<<param_U0<<std::endl;
-    std::cout<<"nts = "<<param_nts<<std::endl;
-    std::cout<<"ictype = "<<param_ictype<<std::endl;
+
     // Close the file
     parseFile.close();
-    param_lT = param_c_infm*( 1.0/param_k-1 )/param_G;//       # thermal length           um
-    param_lamd = 5*sqrt(2)/8*param_W0/param_d0;//     # coupling constant
-    param_tau0 = pow(0.6267*param_lamd*param_W0,2)/param_Dl; //    # time scale  
-    param_R_tilde = param_R*param_tau0/param_W0;
-    param_Dl_tilde = pow(param_Dl*param_tau0/param_W0,2);
-    param_lT_tilde = param_lT/param_W0;
-    param_dt = pow(0.8*(param_dx),2)/(4*param_Dl_tilde);
-    param_ny = param_asp_ratio*param_nx;
-    param_lxd = param_dx*param_W0*param_nx; //                    # horizontal length in micron
-    param_lyd = param_asp_ratio*param_lxd;
-    std::cout<<"lT = "<<param_lT<<std::endl;
-    std::cout<<"lamd = "<<param_lamd<<std::endl;
-    std::cout<<"tau0 = "<<param_tau0<<std::endl;
-    std::cout<<"R_tilde = "<<param_R_tilde<<std::endl;
-    std::cout<<"Dl_tilde = "<<param_Dl_tilde<<std::endl;
-    std::cout<<"lT_tilde = "<<param_lT_tilde<<std::endl;
-    std::cout<<"dt = "<<param_dt<<std::endl;
-    std::cout<<"ny = "<<param_ny<<std::endl;
-    std::cout<<"lxd = "<<param_lxd<<std::endl;
-    std::cout<<"lyd = "<<param_lyd<<std::endl;
+    
+    // calculate the parameters
+    params.lT = params.c_infm*( 1.0/params.k-1 )/params.G;//       # thermal length           um
+    params.lamd = 5*sqrt(2.0)/8*params.W0/params.d0;//     # coupling constant
+    params.tau0 = pow(0.6267*params.lamd*params.W0,2)/params.Dl; //    # time scale  
+    params.R_tilde = params.R*params.tau0/params.W0;
+    params.Dl_tilde = pow(params.Dl*params.tau0/params.W0,2);
+    params.lT_tilde = params.lT/params.W0;
+    params.dt = pow(0.8*(params.dx),2)/(4*params.Dl_tilde);
+    params.ny = params.asp_ratio*params.nx;
+    params.lxd = params.dx*params.W0*params.nx; //                    # horizontal length in micron
+    params.lyd = params.asp_ratio*params.lxd;
+    params.hi = 1.0/dx;
+    params.cosa = cos(params.alpha0/180*M_PI);
+    params.sina = sin(params.alpha0/180*M_PI);
+    params.sqrt2 = sqrt(2.0);
+    params.a_s = 1 - 3.0*params.delta;
+    params.epsilon = 4.0*params.delta/params.a_s;
+    params.a_12 = 4.0*params.a_s*params.epsilon;
+    
+    std::cout<<"G = "<<params.G<<std::endl;
+    std::cout<<"R = "<<params.R<<std::endl;
+    std::cout<<"delta = "<<params.delta<<std::endl;
+    std::cout<<"k = "<<params.k<<std::endl;
+    std::cout<<"c_infm = "<<params.c_infm<<std::endl;
+    std::cout<<"Dl = "<<params.Dl<<std::endl;
+    std::cout<<"d0 = "<<params.d0<<std::endl;
+    std::cout<<"W0 = "<<params.W0<<std::endl;
+    std::cout<<"c_infty = "<<params.c_infty<<std::endl;
+    std::cout<<"eps = "<<params.eps<<std::endl;
+    std::cout<<"alpha0 = "<<params.alpha0<<std::endl;
+    std::cout<<"dx = "<<params.dx<<std::endl;
+    std::cout<<"asp_ratio = "<<params.asp_ratio<<std::endl;
+    std::cout<<"nx = "<<params.nx<<std::endl;
+    std::cout<<"Mt = "<<params.Mt<<std::endl;
+    std::cout<<"eta = "<<params.eta<<std::endl;
+    std::cout<<"U0 = "<<params.U0<<std::endl;
+    std::cout<<"nts = "<<params.nts<<std::endl;
+    std::cout<<"ictype = "<<params.ictype<<std::endl;
+    std::cout<<"lT = "<<params.lT<<std::endl;
+    std::cout<<"lamd = "<<params.lamd<<std::endl;
+    std::cout<<"tau0 = "<<params.tau0<<std::endl;
+    std::cout<<"R_tilde = "<<params.R_tilde<<std::endl;
+    std::cout<<"Dl_tilde = "<<params.Dl_tilde<<std::endl;
+    std::cout<<"lT_tilde = "<<params.lT_tilde<<std::endl;
+    std::cout<<"dt = "<<params.dt<<std::endl;
+    std::cout<<"ny = "<<params.ny<<std::endl;
+    std::cout<<"lxd = "<<params.lxd<<std::endl;
+    std::cout<<"lyd = "<<params.lyd<<std::endl;
     
     // step 2 (setup): pass the parameters to constant memory and 
     // allocate and initialize 1_D arrays on CPU/GPU  x: size nx+1, range [0,lxd], y: size ny+1, range [0, lyd]
@@ -178,8 +185,8 @@ int main(int argc, char** argv)
     // allocate 1_D arrays on CPU: psi, phi, U of size (nx+3)*(ny+3) -- these are for I/O
     // x and y would be allocate to the shared memory?
     
-    int length_x=(int)param_nx+1;
-    int length_y=(int)param_ny+1;
+    int length_x = params.nx+3;
+    int length_y = params.ny+3;
     float* x=(float*) malloc(length_x* sizeof(float));
     float* y=(float*) malloc(length_y* sizeof(float));
 
@@ -189,45 +196,39 @@ int main(int argc, char** argv)
     // cudaMallocManaged((void**)&y, length_y* sizeof(float));
 
     // x
-    for(int i=0; i<(int)param_nx+1; i++){
-        x[i]=i*param_lxd/param_nx; 
+    for(int i=0; i<length_x; i++){
+        x[i]=(i-1)*params.lxd/params.nx; 
     }
 
     std::cout<<"x= ";
-    for(int i=0; i<(int)param_nx+1; i++){
+    for(int i=0; i<length_x; i++){
         std::cout<<x[i]<<" ";
     }
     std::cout<<std::endl;
 
     // y
-    for(int i=0; i<(int)param_ny+1; i++){
-        y[i]=i*param_lyd/param_ny; 
+    for(int i=0; i<length_y; i++){
+        y[i]=(i-1)*params.lyd/params.ny; 
     }
 
     std::cout<<"y= ";
-    for(int i=0; i<(int)param_nx+1; i++){
+    for(int i=0; i<length_y; i++){
         std::cout<<y[i]<<" ";
     }
     std::cout<<std::endl;
 
-    int length=((int)param_nx+3) * ((int)param_ny+3);
+    int length=length_x*length_y;
     std::cout<<"length of psi, phi, U="<<length<<std::endl;
     float* psi=(float*) malloc(length* sizeof(float));
     float* phi=(float*) malloc(length* sizeof(float));
     float* U=(float*) malloc(length* sizeof(float));
-    for(int i=0; i<length; i++){
+    /*for(int i=0; i<length; i++){
         psi[i]=0.0;
         phi[i]=0.0;
         U[i]=0.0;
-    }    
+    }   */ 
 
-    setup(param_nx, param_ny, param_G, param_R,  param_delta,
-         param_k,  param_c_infm,  param_Dl,  param_d0,  param_W0, 
-         param_lT,  param_lamd,  param_tau0,  param_c_infty,  param_R_tilde,
-         param_Dl_tilde,  param_lT_tilde,  param_eps,  param_alpha0,  param_dx, 
-         param_dt,  param_asp_ratio,  param_lxd,  param_lyd,  param_Mt,
-         param_eta,  param_U0,  param_nts,  param_ictype,
-         x, y, phi, psi, U);
+    setup(params, length_x, length_y, x, y, phi, psi, U);
     // // allocate 1_D arrays on GPU: psi_old/psi_new, phi_old/phi_new, U_old/U_new, same size as before
     // float* psi_old = NULL;
     // float* psi_new = NULL;

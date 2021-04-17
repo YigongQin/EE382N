@@ -11,38 +11,48 @@ using namespace std;
 extern float toBW(int bytes, float sec);
 
 struct GlobalConstants {
-  float param_nx;
-  float param_ny;
-  float param_G;
-  float param_R;
-  float param_delta;
-  float param_k;
-  float param_c_infm;
-  float param_Dl;
-  float param_d0;
-  float param_W0;
-  float param_lT;
-  float param_lamd; 
-  float param_tau0;
-  float param_c_infty; 
-  float param_R_tilde;
-  float param_Dl_tilde; 
-  float param_lT_tilde; 
-  float param_eps; 
-  float param_alpha0; 
-  float param_dx; 
-  float param_dt; 
-  float param_asp_ratio; 
-  float param_lxd; 
-  float param_lyd; 
-  float param_Mt;
-  float param_eta; 
-  float param_U0; 
-  float param_nts; 
-  float param_ictype;
+  int nx;
+  int ny;
+  int Mt;
+  int nts; 
+  int ictype;
+  float G;
+  float R;
+  float delta;
+  float k;
+  float c_infm;
+  float Dl;
+  float d0;
+  float W0;
+  float lT;
+  float lamd; 
+  float tau0;
+  float c_infty; 
+  float R_tilde;
+  float Dl_tilde; 
+  float lT_tilde; 
+  float eps; 
+  float alpha0; 
+  float dx; 
+  float dt; 
+  float asp_ratio; 
+  float lxd;
+  float lx; 
+  float lyd; 
+  float eta; 
+  float U0; 
+  // parameters that are not in the input file
+  float hi;
+  float cosa;
+  float sina;
+  float sqrt2;
+  float a_s;
+  float epsilon;
+  float a_12;
+
 };
 
-__constant__ GlobalConstants cuConstParams;
+__constant__ GlobalConstants cP;
 
 // Device codes 
 
@@ -353,13 +363,7 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
        }
 }
 
-void setup(float param_nx, float param_ny, float param_G, float param_R, float param_delta,
-  float param_k, float param_c_infm, float param_Dl, float param_d0, float param_W0, 
-  float param_lT, float param_lamd, float param_tau0, float param_c_infty, float param_R_tilde,
-  float param_Dl_tilde, float param_lT_tilde, float param_eps, float param_alpha0, float param_dx, 
-  float param_dt, float param_asp_ratio, float param_lxd, float param_lyd, float param_Mt,
-  float param_eta, float param_U0, float param_nts, float param_ictype,
-  float* x, float* y, float* phi, float* psi,float* U){
+void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U){
   // we should have already pass all the data structure in by this time
   // move those data onto device
 
@@ -372,60 +376,31 @@ void setup(float param_nx, float param_ny, float param_G, float param_R, float p
   float* U_new = NULL;
   float* phi_old = NULL;
   float* phi_new = NULL;
-
+  float* dpsi = NULL;
   // allocate x, y, phi, psi, U related params
-  int length_x=(int)param_nx+1;
-  int length_y=(int)param_ny+1;
-  cudaMalloc(&x_device, sizeof(float) * length_x);
-  cudaMalloc(&y_device, sizeof(float) * length_y);
+  int length = fnx*fny;
 
-  int length = ((int)param_nx+3) * ((int)param_ny+3);
+  cudaMalloc(&x_device, sizeof(float) * fnx);
+  cudaMalloc(&y_device, sizeof(float) * fny);
+
   cudaMalloc(&phi_old,  sizeof(float) * length);
   cudaMalloc(&psi_old,  sizeof(float) * length);
   cudaMalloc(&U_old,    sizeof(float) * length);
   cudaMalloc(&phi_new,  sizeof(float) * length);
   cudaMalloc(&psi_new,  sizeof(float) * length);
   cudaMalloc(&U_new,    sizeof(float) * length);
+  cudaMalloc(&dpsi,    sizeof(float) * length);
 
-  cudaMemcpy(x_device, x, sizeof(float) * length_x, cudaMemcpyHostToDevice);
-  cudaMemcpy(y_device, y, sizeof(float) * length_y, cudaMemcpyHostToDevice);
-  cudaMemcpy(psi_old, psi, sizeof(float) * length, cudaMemcpyHostToDevice);
-  cudaMemcpy(phi_old, phi, sizeof(float) * length, cudaMemcpyHostToDevice);
-  cudaMemcpy(U_old, U, sizeof(float) * length, cudaMemcpyHostToDevice);
+  cudaMemcpy(x_device, x, sizeof(float) * fnx, cudaMemcpyHostToDevice);
+  cudaMemcpy(y_device, y, sizeof(float) * fny, cudaMemcpyHostToDevice);
+  //cudaMemcpy(psi_old, psi, sizeof(float) * length, cudaMemcpyHostToDevice);
+  //cudaMemcpy(phi_old, phi, sizeof(float) * length, cudaMemcpyHostToDevice);
+  //cudaMemcpy(U_old, U, sizeof(float) * length, cudaMemcpyHostToDevice);
 
   // pass all the read-only params into global constant
-  GlobalConstants params;
-  params.param_nx = param_nx;
-  params.param_ny = param_ny;
-  params.param_G  = param_G;
-  params.param_R  = param_R;
-  params.param_delta  = param_delta;
-  params.param_k  = param_k;
-  params.param_c_infm = param_c_infm;
-  params.param_Dl = param_Dl;
-  params.param_d0  = param_d0;
-  params.param_W0  = param_W0;
-  params.param_lT  = param_lT;
-  params.param_lamd  = param_lamd;
-  params.param_tau0 = param_tau0;
-  params.param_c_infty = param_c_infty;
-  params.param_R_tilde  = param_R_tilde;
-  params.param_Dl_tilde  = param_Dl_tilde;
-  params.param_lT_tilde  = param_lT_tilde;
-  params.param_eps  = param_eps;
-  params.param_alpha0 = param_alpha0;
-  params.param_dx = param_dx;
-  params.param_dt  = param_dt;
-  params.param_asp_ratio  = param_asp_ratio;
-  params.param_lxd  = param_lxd;
-  params.param_lyd  = param_lyd;
-  params.param_Mt  = param_Mt;
-  params.param_eta  = param_eta;
-  params.param_U0  = param_U0;
-  params.param_nts = param_nts;
-  params.param_ictype = param_ictype;
 
-  cudaMemcpyToSymbol(cuConstParams, &params, sizeof(GlobalConstants));
+
+  cudaMemcpyToSymbol(cP, &params, sizeof(GlobalConstants));
 
 }
 
@@ -441,12 +416,12 @@ void time_marching(){
 
    for (int kt=0; kt<Mt/2; kt++){
 
-     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y, dpsi, fnx, fny, 2*kt ); 
+     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt ); 
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
      rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi);
 
 
-     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y, dpsi, fnx, fny, 2*kt+1 ); 
+     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1 ); 
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
      rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi);
 
