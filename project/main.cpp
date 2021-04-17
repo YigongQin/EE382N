@@ -10,6 +10,7 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
+//#include <mat.h> 
 
 void printCudaInfo();
 
@@ -148,12 +149,56 @@ int main(int argc, char** argv)
     // you should get dx = dy = lxd/nx = lyd/ny
     // allocate 1_D arrays on CPU: psi, phi, U of size (nx+3)*(ny+3) -- these are for I/O
     // allocate 1_D arrays on GPU: psi_old/psi_new, phi_old/phi_new, U_old/U_new, same size as before
+    int length_x=(int)param_nx+1;
+    float* x=(float*) malloc(length_x* sizeof(float));
+    for(int i=0; i<(int)param_nx+1; i++){
+        x[i]=i*param_lxd/param_nx; 
+    }
 
+    std::cout<<"x= ";
+    for(int i=0; i<(int)param_nx+1; i++){
+        std::cout<<x[i]<<" ";
+    }
+    std::cout<<std::endl;
 
+    int length_y=(int)param_ny+1;
+    float* y=(float*) malloc(length_y* sizeof(float));
+    for(int i=0; i<(int)param_ny+1; i++){
+        y[i]=i*param_lyd/param_ny; 
+    }
+
+    std::cout<<"y= ";
+    for(int i=0; i<(int)param_nx+1; i++){
+        std::cout<<y[i]<<" ";
+    }
+    std::cout<<std::endl;
+
+    int length=((int)param_nx+3) * ((int)param_ny+3);
+    std::cout<<"length of psi, phi, U="<<length<<std::endl;
+    float* psi=(float*) malloc(length* sizeof(float));
+    float* phi=(float*) malloc(length* sizeof(float));
+    float* U=(float*) malloc(length* sizeof(float));
+    for(int i=0; i<length; i++){
+        psi[i]=0.0;
+        phi[i]=0.0;
+        U[i]=0.0;
+    }
     // step 3 (time marching): call the kernels Mt times
     
     // step 4: save the psi, phi, U to a .mat file
-
+    // MATFile *pmatFile = NULL;
+    // mxArray *pMxArray = NULL;
+    // int M=(int)param_nx+3;
+    // int N=(int)param_ny+3);
+    // pmatFile = matOpen("out.mat","w");
+    // pMxArray = mxCreateDoubleMatrix(M, N, mxREAL);
+    // mxSetData(pMxArray, psi);
+    // matPutVariable(pmatFile, "psi", pMxArray);
+    // mxSetData(pMxArray, phi);
+    // matPutVariable(pmatFile, "psi", pMxArray);
+    // mxSetData(pMxArray, U);
+    // matPutVariable(pmatFile, "psi", pMxArray);
+    // matClose(pmatFile);
 
     return 0;
 }
