@@ -12,7 +12,7 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
-#include <mat.h> 
+// #include <mat.h> 
 
 #include <cuda.h> // add cuda support
 #include <cuda_runtime.h>
@@ -235,33 +235,33 @@ int main(int argc, char** argv)
     // step 3 (time marching): call the kernels Mt times
     
     // step 4: save the psi, phi, U to a .mat file
-    MATFile *pmat = NULL;
-    mxArray *pMxArray = NULL;
+    // MATFile *pmat = NULL;
+    // mxArray *pMxArray = NULL;
 
-    const char *file = "output.mat";
-    printf("Creating file %s...\n\n", file);
-    pmat = matOpen(file, "w");
+    // const char *file = "output.mat";
+    // printf("Creating file %s...\n\n", file);
+    // pmat = matOpen(file, "w");
 
-    int M=(int)param_nx+3;
-    int N=(int)param_ny+3;
-    pMxArray = mxCreateDoubleMatrix(M, N, mxREAL);
+    // int M=(int)param_nx+3;
+    // int N=(int)param_ny+3;
+    // pMxArray = mxCreateDoubleMatrix(M, N, mxREAL);
 
-    mxSetData(pMxArray, psi_old);
-    matPutVariable(pmat, "psi", pMxArray);
-    mxSetData(pMxArray, phi_old);
-    matPutVariable(pmat, "phi", pMxArray);
-    mxSetData(pMxArray, U_old);
-    matPutVariable(pmat, "U", pMxArray);
+    // mxSetData(pMxArray, psi_old);
+    // matPutVariable(pmat, "psi", pMxArray);
+    // mxSetData(pMxArray, phi_old);
+    // matPutVariable(pmat, "phi", pMxArray);
+    // mxSetData(pMxArray, U_old);
+    // matPutVariable(pmat, "U", pMxArray);
 
-    // clean up before exit
-    mxDestroyArray(pMxArray);
+    // // clean up before exit
+    // mxDestroyArray(pMxArray);
 
-    if (matClose(pmat) != 0) {
-        printf("Error closing file %s\n",file);
-        return(EXIT_FAILURE);
-    }
+    // if (matClose(pmat) != 0) {
+    //     printf("Error closing file %s\n",file);
+    //     return(EXIT_FAILURE);
+    // }
 
-    printf("Done\n");
+    // printf("Done\n");
 
     return 0;
 }
