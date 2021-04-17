@@ -18,7 +18,13 @@
 #include <cuda_runtime.h>
 #include <driver_functions.h>
 
-void setup(int param_nx, int param_ny, float* x, float* y, float* phi, float* psi,float* U);
+void setup(float param_nx, float param_ny, float param_G, float param_R, float param_delta,
+    float param_k, float param_c_infm, float param_Dl, float param_d0, float param_W0, 
+    float param_lT, float param_lamd, float param_tau0, float param_c_infty, float param_R_tilde,
+    float param_Dl_tilde, float param_lT_tilde, float param_eps, float param_alpha0, float param_dx, 
+    float param_dt, float param_asp_ratio, float param_lxd, float param_lyd, float param_Mt,
+    float param_eta, float param_U0, float param_nts, float param_ictype,
+    float* x, float* y, float* phi, float* psi,float* U);
 
 void printCudaInfo();
 
@@ -215,10 +221,13 @@ int main(int argc, char** argv)
         U[i]=0.0;
     }    
 
-    // use this to pass and initialize
-    setup(param_nx, param_ny, x, y, phi, psi, U);
-
-
+    setup(param_nx, param_ny, param_G, param_R,  param_delta,
+         param_k,  param_c_infm,  param_Dl,  param_d0,  param_W0, 
+         param_lT,  param_lamd,  param_tau0,  param_c_infty,  param_R_tilde,
+         param_Dl_tilde,  param_lT_tilde,  param_eps,  param_alpha0,  param_dx, 
+         param_dt,  param_asp_ratio,  param_lxd,  param_lyd,  param_Mt,
+         param_eta,  param_U0,  param_nts,  param_ictype,
+         x, y, phi, psi, U);
     // // allocate 1_D arrays on GPU: psi_old/psi_new, phi_old/phi_new, U_old/U_new, same size as before
     // float* psi_old = NULL;
     // float* psi_new = NULL;

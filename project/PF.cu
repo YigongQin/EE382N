@@ -11,19 +11,35 @@ using namespace std;
 extern float toBW(int bytes, float sec);
 
 struct GlobalConstants {
-  int param_nx;
-  int param_ny;
-
-  float* x;
-  float* y;
-
-  float* phi_old;
-  float* psi_old;
-  float* U_old;
-
-  float* phi_new;
-  float* psi_new;
-  float* U_new;
+  float param_nx;
+  float param_ny;
+  float param_G;
+  float param_R;
+  float param_delta;
+  float param_k;
+  float param_c_infm;
+  float param_Dl;
+  float param_d0;
+  float param_W0;
+  float param_lT;
+  float param_lamd; 
+  float param_tau0;
+  float param_c_infty; 
+  float param_R_tilde;
+  float param_Dl_tilde; 
+  float param_lT_tilde; 
+  float param_eps; 
+  float param_alpha0; 
+  float param_dx; 
+  float param_dt; 
+  float param_asp_ratio; 
+  float param_lxd; 
+  float param_lyd; 
+  float param_Mt;
+  float param_eta; 
+  float param_U0; 
+  float param_nts; 
+  float param_ictype;
 };
 
 __constant__ GlobalConstants cuConstParams;
@@ -337,10 +353,16 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
        }
 }
 
-void setup(param_nx, param_ny, x, y, phi, psi, U){
+void setup(float param_nx, float param_ny, float param_G, float param_R, float param_delta,
+  float param_k, float param_c_infm, float param_Dl, float param_d0, float param_W0, 
+  float param_lT, float param_lamd, float param_tau0, float param_c_infty, float param_R_tilde,
+  float param_Dl_tilde, float param_lT_tilde, float param_eps, float param_alpha0, float param_dx, 
+  float param_dt, float param_asp_ratio, float param_lxd, float param_lyd, float param_Mt,
+  float param_eta, float param_U0, float param_nts, float param_ictype,
+  float* x, float* y, float* phi, float* psi,float* U){
   // we should have already pass all the data structure in by this time
   // move those data onto device
-  // should have param_nx param_ny x y phi_old psi_old U_old been pass in
+
   float* x_device = NULL;
   float* y_device = NULL;
 
@@ -351,35 +373,59 @@ void setup(param_nx, param_ny, x, y, phi, psi, U){
   float* phi_old = NULL;
   float* phi_new = NULL;
 
-  cudaMalloc(&x_device, sizeof(float) * (param_nx + 1));
-  cudaMalloc(&y_device, sizeof(float) * (param_ny + 1));
+  // allocate x, y, phi, psi, U related params
+  int length_x=(int)param_nx+1;
+  int length_y=(int)param_ny+1;
+  cudaMalloc(&x_device, sizeof(float) * length_x);
+  cudaMalloc(&y_device, sizeof(float) * length_y);
 
-  cudaMalloc(&phi_old,  sizeof(float) * (param_nx + 3) * (param_ny + 3));
-  cudaMalloc(&psi_old,  sizeof(float) * (param_nx + 3) * (param_ny + 3));
-  cudaMalloc(&U_old,    sizeof(float) * (param_nx + 3) * (param_ny + 3));
-  cudaMalloc(&phi_new,  sizeof(float) * (param_nx + 3) * (param_ny + 3));
-  cudaMalloc(&psi_new,  sizeof(float) * (param_nx + 3) * (param_ny + 3));
-  cudaMalloc(&U_new,    sizeof(float) * (param_nx + 3) * (param_ny + 3));
+  int length = ((int)param_nx+3) * ((int)param_ny+3);
+  cudaMalloc(&phi_old,  sizeof(float) * length);
+  cudaMalloc(&psi_old,  sizeof(float) * length);
+  cudaMalloc(&U_old,    sizeof(float) * length);
+  cudaMalloc(&phi_new,  sizeof(float) * length);
+  cudaMalloc(&psi_new,  sizeof(float) * length);
+  cudaMalloc(&U_new,    sizeof(float) * length);
 
-  cudaMemcpy(x_device, x, sizeof(float) * (param_nx + 1), cudaMemcpyHostToDevice);
-  cudaMemcpy(y_device, y, sizeof(float) * (param_ny + 1), cudaMemcpyHostToDevice);
-  cudaMemcpy(psi_old, psi, sizeof(float) * (param_nx + 3) * (param_ny + 3), cudaMemcpyHostToDevice);
-  cudaMemcpy(phi_old, phi, sizeof(float) * (param_nx + 3) * (param_ny + 3), cudaMemcpyHostToDevice);
-  cudaMemcpy(U_old, U, sizeof(float) * (param_nx + 3) * (param_ny + 3), cudaMemcpyHostToDevice);
+  cudaMemcpy(x_device, x, sizeof(float) * length_x, cudaMemcpyHostToDevice);
+  cudaMemcpy(y_device, y, sizeof(float) * length_y, cudaMemcpyHostToDevice);
+  cudaMemcpy(psi_old, psi, sizeof(float) * length, cudaMemcpyHostToDevice);
+  cudaMemcpy(phi_old, phi, sizeof(float) * length, cudaMemcpyHostToDevice);
+  cudaMemcpy(U_old, U, sizeof(float) * length, cudaMemcpyHostToDevice);
 
+  // pass all the read-only params into global constant
   GlobalConstants params;
   params.param_nx = param_nx;
   params.param_ny = param_ny;
-  params.x = x_device;
-  params.y = y_device;
-  params.phi_old = phi_old;
-  params.psi_old = psi_old;
-  params.U_old   = U_old  ;
-  params.U_new   = U_new  ;
-  params.phi_new = phi_new;
-  params.psi_new = psi_new;
+  params.param_G  = param_G;
+  params.param_R  = param_R;
+  params.param_delta  = param_delta;
+  params.param_k  = param_k;
+  params.param_c_infm = param_c_infm;
+  params.param_Dl = param_Dl;
+  params.param_d0  = param_d0;
+  params.param_W0  = param_W0;
+  params.param_lT  = param_lT;
+  params.param_lamd  = param_lamd;
+  params.param_tau0 = param_tau0;
+  params.param_c_infty = param_c_infty;
+  params.param_R_tilde  = param_R_tilde;
+  params.param_Dl_tilde  = param_Dl_tilde;
+  params.param_lT_tilde  = param_lT_tilde;
+  params.param_eps  = param_eps;
+  params.param_alpha0 = param_alpha0;
+  params.param_dx = param_dx;
+  params.param_dt  = param_dt;
+  params.param_asp_ratio  = param_asp_ratio;
+  params.param_lxd  = param_lxd;
+  params.param_lyd  = param_lyd;
+  params.param_Mt  = param_Mt;
+  params.param_eta  = param_eta;
+  params.param_U0  = param_U0;
+  params.param_nts = param_nts;
+  params.param_ictype = param_ictype;
 
-  cudaMemcpyToSymbol(cuConstRendererParams, &params, sizeof(GlobalConstants));
+  cudaMemcpyToSymbol(cuConstParams, &params, sizeof(GlobalConstants));
 
 }
 
