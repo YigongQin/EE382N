@@ -10,6 +10,23 @@ using namespace std;
 
 extern float toBW(int bytes, float sec);
 
+struct GlobalConstants {
+  int param_nx;
+  int param_ny;
+
+  float* x;
+  float* y;
+
+  float* phi_old;
+  float* psi_old;
+  float* U_old;
+
+  float* phi_new;
+  float* psi_new;
+  float* U_new;
+};
+
+__constant__ GlobalConstants cuConstParams;
 
 // Device codes 
 
@@ -320,7 +337,51 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
        }
 }
 
-void setup()
+void setup(param_nx, param_ny, x, y, phi, psi, U){
+  // we should have already pass all the data structure in by this time
+  // move those data onto device
+  // should have param_nx param_ny x y phi_old psi_old U_old been pass in
+  float* x_device = NULL;
+  float* y_device = NULL;
+
+  float* psi_old = NULL;
+  float* psi_new = NULL;
+  float* U_old = NULL;
+  float* U_new = NULL;
+  float* phi_old = NULL;
+  float* phi_new = NULL;
+
+  cudaMalloc(&x_device, sizeof(float) * (param_nx + 1));
+  cudaMalloc(&y_device, sizeof(float) * (param_ny + 1));
+
+  cudaMalloc(&phi_old,  sizeof(float) * (param_nx + 3) * (param_ny + 3));
+  cudaMalloc(&psi_old,  sizeof(float) * (param_nx + 3) * (param_ny + 3));
+  cudaMalloc(&U_old,    sizeof(float) * (param_nx + 3) * (param_ny + 3));
+  cudaMalloc(&phi_new,  sizeof(float) * (param_nx + 3) * (param_ny + 3));
+  cudaMalloc(&psi_new,  sizeof(float) * (param_nx + 3) * (param_ny + 3));
+  cudaMalloc(&U_new,    sizeof(float) * (param_nx + 3) * (param_ny + 3));
+
+  cudaMemcpy(x_device, x, sizeof(float) * (param_nx + 1), cudaMemcpyHostToDevice);
+  cudaMemcpy(y_device, y, sizeof(float) * (param_ny + 1), cudaMemcpyHostToDevice);
+  cudaMemcpy(psi_old, psi, sizeof(float) * (param_nx + 3) * (param_ny + 3), cudaMemcpyHostToDevice);
+  cudaMemcpy(phi_old, phi, sizeof(float) * (param_nx + 3) * (param_ny + 3), cudaMemcpyHostToDevice);
+  cudaMemcpy(U_old, U, sizeof(float) * (param_nx + 3) * (param_ny + 3), cudaMemcpyHostToDevice);
+
+  GlobalConstants params;
+  params.param_nx = param_nx;
+  params.param_ny = param_ny;
+  params.x = x_device;
+  params.y = y_device;
+  params.phi_old = phi_old;
+  params.psi_old = psi_old;
+  params.U_old   = U_old  ;
+  params.U_new   = U_new  ;
+  params.phi_new = phi_new;
+  params.psi_new = psi_new;
+
+  cudaMemcpyToSymbol(cuConstRendererParams, &params, sizeof(GlobalConstants));
+
+}
 
 
 void time_marching(){

@@ -18,6 +18,8 @@
 #include <cuda_runtime.h>
 #include <driver_functions.h>
 
+void setup(int param_nx, int param_ny, float* x, float* y, float* phi, float* psi,float* U);
+
 void printCudaInfo();
 
 // add function for easy retrieving params
@@ -169,16 +171,16 @@ int main(int argc, char** argv)
 
     // allocate 1_D arrays on CPU: psi, phi, U of size (nx+3)*(ny+3) -- these are for I/O
     // x and y would be allocate to the shared memory?
-    float* x = NULL;
-    float* y = NULL;
+    
     int length_x=(int)param_nx+1;
     int length_y=(int)param_ny+1;
+    float* x=(float*) malloc(length_x* sizeof(float));
+    float* y=(float*) malloc(length_y* sizeof(float));
 
-    cudaMallocManaged((void**)&x, length_x* sizeof(float));
-    cudaMallocManaged((void**)&y, length_y* sizeof(float));
-    
-    // float* x=(float*) malloc(length_x* sizeof(float));
-    // float* y=(float*) malloc(length_y* sizeof(float));
+    // float* x = NULL;
+    // float* y = NULL;
+    // cudaMallocManaged((void**)&x, length_x* sizeof(float));
+    // cudaMallocManaged((void**)&y, length_y* sizeof(float));
 
     // x
     for(int i=0; i<(int)param_nx+1; i++){
@@ -213,28 +215,32 @@ int main(int argc, char** argv)
         U[i]=0.0;
     }    
 
-    // allocate 1_D arrays on GPU: psi_old/psi_new, phi_old/phi_new, U_old/U_new, same size as before
-    float* psi_old = NULL;
-    float* psi_new = NULL;
-    float* U_old = NULL;
-    float* U_new = NULL;
-    float* phi_old = NULL;
-    float* phi_new = NULL;
-    cudaMalloc((void**)&psi_old, length* sizeof(float));
-    cudaMalloc((void**)&psi_new, length* sizeof(float));
-    cudaMalloc((void**)&U_old, length* sizeof(float));
-    cudaMalloc((void**)&U_new, length* sizeof(float));
-    cudaMalloc((void**)&phi_old, length* sizeof(float));
-    cudaMalloc((void**)&phi_new, length* sizeof(float));
+    // use this to pass and initialize
+    setup(param_nx, param_ny, x, y, phi, psi, U);
 
-    // copy data from host to device to initialize old version
-    cudaMemcpy((void *)psi_old, (void *)psi, length* sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy((void *)U_old, (void *)U, length* sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy((void *)phi_old, (void *)phi, length* sizeof(float), cudaMemcpyHostToDevice);
+
+    // // allocate 1_D arrays on GPU: psi_old/psi_new, phi_old/phi_new, U_old/U_new, same size as before
+    // float* psi_old = NULL;
+    // float* psi_new = NULL;
+    // float* U_old = NULL;
+    // float* U_new = NULL;
+    // float* phi_old = NULL;
+    // float* phi_new = NULL;
+    // cudaMalloc((void**)&psi_old, length* sizeof(float));
+    // cudaMalloc((void**)&psi_new, length* sizeof(float));
+    // cudaMalloc((void**)&U_old, length* sizeof(float));
+    // cudaMalloc((void**)&U_new, length* sizeof(float));
+    // cudaMalloc((void**)&phi_old, length* sizeof(float));
+    // cudaMalloc((void**)&phi_new, length* sizeof(float));
+
+    // // copy data from host to device to initialize old version
+    // cudaMemcpy((void *)psi_old, (void *)psi, length* sizeof(float), cudaMemcpyHostToDevice);
+    // cudaMemcpy((void *)U_old, (void *)U, length* sizeof(float), cudaMemcpyHostToDevice);
+    // cudaMemcpy((void *)phi_old, (void *)phi, length* sizeof(float), cudaMemcpyHostToDevice);
 
     // step 3 (time marching): call the kernels Mt times
     
-    // step 4: save the psi, phi, U to a .mat file
+    // // step 4: save the psi, phi, U to a .mat file
     // MATFile *pmat = NULL;
     // mxArray *pMxArray = NULL;
 
