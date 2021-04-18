@@ -141,11 +141,11 @@ int main(int argc, char** argv)
     // calculate the parameters
     params.lT = params.c_infm*( 1.0/params.k-1 )/params.G;//       # thermal length           um
     params.lamd = 5*sqrt(2.0)/8*params.W0/params.d0;//     # coupling constant
-    params.tau0 = pow(0.6267*params.lamd*params.W0,2)/params.Dl; //    # time scale  
+    params.tau0 = 0.6267*params.lamd*params.W0*params.W0/params.Dl; //    # time scale  
     params.R_tilde = params.R*params.tau0/params.W0;
-    params.Dl_tilde = pow(params.Dl*params.tau0/params.W0,2);
+    params.Dl_tilde = params.Dl*params.tau0/pow(params.W0,2);
     params.lT_tilde = params.lT/params.W0;
-    params.dt = pow(0.8*(params.dx),2)/(4*params.Dl_tilde);
+    params.dt = 0.8*pow(params.dx,2)/(4*params.Dl_tilde);
     params.ny = (int)params.asp_ratio*params.nx;
     params.lxd = params.dx*params.W0*params.nx; //                    # horizontal length in micron
     params.lyd = params.asp_ratio*params.lxd;

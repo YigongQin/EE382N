@@ -276,7 +276,7 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         
         ps_new[C] = ps[C] +  cP.dt * dpsi[C];
         ph_new[C] = tanhf(ps_new[C]/cP.sqrt2);
-        //if (C==1000){printf("find");}
+        if (C==1000){printf("%f ",ph_new[C]);}
          }
 } 
 
@@ -433,7 +433,7 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
    }
    cudaDeviceSynchronize();
    double endTime = CycleTimer::currentSeconds();
-   printf("time for %d iterations: %f ms\n", params.Mt, endTime-startTime);
+   printf("time for %d iterations: %f s\n", params.Mt, endTime-startTime);
    cudaMemcpy(phi, phi_old, length * sizeof(float),
                cudaMemcpyDeviceToHost);
 
