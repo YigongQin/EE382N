@@ -104,7 +104,7 @@ set_BC(float* ps, float* ph, float* U, float* dpsi, int fnx, int fny){
 // initialization
 __global__ void
 initialize(float* ps_old, float* ph_old, float* U_old, float* ps_new, float* ph_new, float* U_new
-           float* x, float* y, int fnx, int fny){
+           , float* x, float* y, int fnx, int fny){
 
   int C = blockIdx.x * blockDim.x + threadIdx.x;
   int j=C/fnx;
@@ -119,10 +119,10 @@ initialize(float* ps_old, float* ph_old, float* U_old, float* ps_new, float* ph_
     int cent = fnx/2;
     ps_old[C] = 5.625f - sqrtf( (xc-x[cent])*(xc-x[cent]) + yc*yc )/cP.W0 ;
     ps_new[C] = ps_old[C];
-    U_old[C] = U_0;
-    U_new[C] = U_0;
-    ph_old = tanhf(ps_old[C]/cP.sqrt2);
-    ph_new = tanhf(ps_new[C]/cP.sqrt2); 
+    U_old[C] = cP.U0;
+    U_new[C] = cP.U0;
+    ph_old[C] = tanhf(ps_old[C]/cP.sqrt2);
+    ph_new[C] = tanhf(ps_new[C]/cP.sqrt2); 
   }
 }
 
