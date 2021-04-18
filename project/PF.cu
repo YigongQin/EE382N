@@ -117,12 +117,12 @@ initialize(float* ps_old, float* ph_old, float* U_old, float* ps_new, float* ph_
     float xc = x[i]; 
     float yc = y[j];
     int cent = fnx/2;
-    ps_old[C] = 5.625f - sqrtf( (xc-x[cent])*(xc-x[cent]) + yc*yc ) ;
+    ps_old[C] = 5.625f - sqrtf( (xc-x[cent])*(xc-x[cent]) + yc*yc )/cP.W0 ;
     ps_new[C] = ps_old[C];
     U_old[C] = U_0;
     U_new[C] = U_0;
-    ph_old = tanhf(ps_old[C]);
-    ph_new = tanhf(ps_new[C]); 
+    ph_old = tanhf(ps_old[C]/cP.sqrt2);
+    ph_new = tanhf(ps_new[C]/cP.sqrt2); 
   }
 }
 
@@ -400,13 +400,35 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
   //cudaMemcpy(U_old, U, sizeof(float) * length, cudaMemcpyHostToDevice);
 
   // pass all the read-only params into global constant
-
-
   cudaMemcpyToSymbol(cP, &params, sizeof(GlobalConstants));
+
+   int blocksize_1d = 256;
+   int blocksize_2d = 512;
+   int num_block_2d = (fnx*fny+blocksize_2d-1)/blocksize_2d;
+   int num_block_1d = (fnx+fny+blocksize_1d-1)/blocksize_1d;
+
+   initialize<<< num_block_2d, blocksize_2d >>>(ps_old, ph_old, U_old, ps_new, ph_new, U_new, x_device, y_device, fnx, fny);
+
+
+   for (int kt=0; kt<params.Mt/2; kt++){
+
+     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt );
+     set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
+     rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi);
+
+
+     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1 );
+     set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
+     rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi);
+
+   }
+
+  cudaFree()
+
 
 }
 
-
+/*
 void time_marching(GlobalConstants params, int fnx, int fny){
 
    // initialize or load
@@ -415,6 +437,9 @@ void time_marching(GlobalConstants params, int fnx, int fny){
    int blocksize_2d = 512;
    int num_block_2d = (fnx*fny+blocksize_2d-1)/blocksize_2d;
    int num_block_1d = (fnx+fny+blocksize_1d-1)/blocksize_1d;
+
+   initialize<<< num_block_2d, blocksize_2d >>>(ps_old, ph_old, U_old, ps_new, ph_new, U_new, x_device, y_device, fnx, fny);
+   
 
    for (int kt=0; kt<params.Mt/2; kt++){
 
@@ -432,7 +457,7 @@ void time_marching(GlobalConstants params, int fnx, int fny){
 
    
  
-}
+}*/
 
 
 
