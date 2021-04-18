@@ -176,27 +176,27 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         // =============================================================
 
         // these ps's are defined on cell centers
-        psipjp=( ps[C] + ps[R] + ps[T] + ps[T+1] ) * 0.25f;
-        psipjm=( ps[C] + ps[R] + ps[B] + ps[B+1] ) * 0.25f;
-        psimjp=( ps[C] + ps[L] + ps[T-1] + ps[T] ) * 0.25f;
-        psimjm=( ps[C] + ps[L] + ps[B-1] + ps[B] ) * 0.25f;
+        float psipjp=( ps[C] + ps[R] + ps[T] + ps[T+1] ) * 0.25f;
+        float psipjm=( ps[C] + ps[R] + ps[B] + ps[B+1] ) * 0.25f;
+        float psimjp=( ps[C] + ps[L] + ps[T-1] + ps[T] ) * 0.25f;
+        float psimjm=( ps[C] + ps[L] + ps[B-1] + ps[B] ) * 0.25f;
 
-        phipjp=( ph[C] + ph[R] + ph[T] + ph[T+1] ) * 0.25f;
-        phipjm=( ph[C] + ph[R] + ph[B] + ph[B+1] ) * 0.25f;
-        phimjp=( ph[C] + ph[L] + ph[T-1] + ph[T] ) * 0.25f;
-        phimjm=( ph[C] + ph[L] + ph[B-1] + ph[B] ) * 0.25f;
+        float phipjp=( ph[C] + ph[R] + ph[T] + ph[T+1] ) * 0.25f;
+        float phipjm=( ph[C] + ph[R] + ph[B] + ph[B+1] ) * 0.25f;
+        float phimjp=( ph[C] + ph[L] + ph[T-1] + ph[T] ) * 0.25f;
+        float phimjm=( ph[C] + ph[L] + ph[B-1] + ph[B] ) * 0.25f;
         
         // ============================
         // right edge flux
         // ============================
-        psx = ps[R]-ps[C];
-        psz = psipjp - psipjm;
-        phx = ph[R]-ph[C];
-        phz = phipjp - phipjm;
+        float psx = ps[R]-ps[C];
+        float psz = psipjp - psipjm;
+        float phx = ph[R]-ph[C];
+        float phz = phipjp - phipjm;
 
-        A  = atheta( phx,phz);
-        Ap = aptheta(phx,phz);
-        JR = A * ( A*psx - Ap*psz );
+        float A  = atheta( phx,phz);
+        float Ap = aptheta(phx,phz);
+        float JR = A * ( A*psx - Ap*psz );
         
         // ============================
         // left edge flux
@@ -208,7 +208,7 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
 
         A  = atheta( phx,phz);
         Ap = aptheta(phx,phz);
-        JL = A * ( A*psx - Ap*psz );
+        float JL = A * ( A*psx - Ap*psz );
         
         // ============================
         // top edge flux
@@ -220,7 +220,7 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
 
         A  = atheta( phx,phz);
         Ap = aptheta(phx,phz);
-        JT = A * ( A*psz + Ap*psx );
+        float JT = A * ( A*psz + Ap*psx );
 
         // ============================
         // bottom edge flux
@@ -232,7 +232,7 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
 
         A  = atheta( phx,phz);
         Ap = aptheta(phx,phz);
-        JB = A * ( A*psz + Ap*psx );
+        float JB = A * ( A*psz + Ap*psx );
 
          /*# =============================================================
         #
@@ -240,15 +240,15 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         #
         # =============================================================
         # d(phi)/dx  d(psi)/dx d(phi)/dz  d(psi)/dz at nodes (i,j)*/
-        phxn = ( ph[R] - ph[L] ) * 0.5f;
-        phzn = ( ph[T] - ph[B] ) * 0.5f;
-        psxn = ( ps[R] - ps[L] ) * 0.5f;
-        pszn = ( ps[T] - ps[B] ) * 0.5f;
+        float phxn = ( ph[R] - ph[L] ) * 0.5f;
+        float phzn = ( ph[T] - ph[B] ) * 0.5f;
+        float psxn = ( ps[R] - ps[L] ) * 0.5f;
+        float pszn = ( ps[T] - ps[B] ) * 0.5f;
 
-        A2 = atheta(phxn,phzn);
+        float A2 = atheta(phxn,phzn);
         A2 = A2*A2;
-        gradps2 = (psxn)*(psxn) + (pszn)*(pszn);
-        extra =  -sqrt2 * A2 * ph[C] * gradps2;
+        float gradps2 = (psxn)*(psxn) + (pszn)*(pszn);
+        float extra =  -sqrt2 * A2 * ph[C] * gradps2;
 
         /*# =============================================================
         #
@@ -256,9 +256,9 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         #
         # =============================================================*/
 
-        Up = (y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
+        float Up = (y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
 
-        rhs_psi = ((JR-JL) + (JT-JB) + extra) * cP.hi*cP.hi + \
+        float rhs_psi = ((JR-JL) + (JT-JB) + extra) * cP.hi*cP.hi + \
                    cP.sqrt2*ph[C] - cP.lamd*(1.0f-ph[C]*ph[C])*cP.sqrt2*(U[C] + Up);
 
         /*# =============================================================
@@ -266,7 +266,7 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         # 4. dpsi/dt term
         #
         # =============================================================*/
-        tp = (1.0f-(1.0f-cP.k)*Up);
+        float tp = (1.0f-(1.0f-cP.k)*Up);
         if (tp >= cP.k){tau_psi = tp*A2;}
                else {tau_psi = cP.k*A2;}
         
@@ -299,23 +299,23 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         // =============================================================
 
         // these ps's are defined on cell centers
-        phipjp=( ph[C] + ph[R] + ph[T] + ph[T+1] ) * 0.25f;
-        phipjm=( ph[C] + ph[R] + ph[B] + ph[B+1] ) * 0.25f;
-        phimjp=( ph[C] + ph[L] + ph[T-1] + ph[T] ) * 0.25f;
-        phimjm=( ph[C] + ph[L] + ph[B-1] + ph[B] ) * 0.25f;
+        float phipjp=( ph[C] + ph[R] + ph[T] + ph[T+1] ) * 0.25f;
+        float phipjm=( ph[C] + ph[R] + ph[B] + ph[B+1] ) * 0.25f;
+        float phimjp=( ph[C] + ph[L] + ph[T-1] + ph[T] ) * 0.25f;
+        float phimjm=( ph[C] + ph[L] + ph[B-1] + ph[B] ) * 0.25f;
 
-        jat    = 0.5f*(1.0f+(1.0f-k)*U[C])*(1.0f-ph[C]*ph[C])*dpsi[C];
+        float jat    = 0.5f*(1.0f+(1.0f-k)*U[C])*(1.0f-ph[C]*ph[C])*dpsi[C];
         /*# ============================
         # right edge flux (i+1/2, j)
         # ============================*/
-        phx = ph[R]-ph[C];
-        phz = phipjp - phipjm;
-        phn2 = phx*phx + phz*phz;
+        float phx = ph[R]-ph[C];
+        float phz = phipjp - phipjm;
+        float phn2 = phx*phx + phz*phz;
         if (phn2 > eps) {nx = phx / sqrtf(phn2);}
                    else { nx = 0.0f;}
         
-        jat_ip = 0.5f*(1.0f+(1.0f-k)*U[R])*(1.0f-ph[R]*ph[R])*dpsi[R];	
-        UR = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[R])*(U[R]-U[C]) + 0.5f*(jat + jat_ip)*nx;
+        float jat_ip = 0.5f*(1.0f+(1.0f-k)*U[R])*(1.0f-ph[R]*ph[R])*dpsi[R];	
+        float UR = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[R])*(U[R]-U[C]) + 0.5f*(jat + jat_ip)*nx;
     	 
     	 
         /* ============================
@@ -327,8 +327,8 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         if (phn2 > eps) {nx = phx / sqrtf(phn2);}
                    else { nx = 0.0f;}
         
-        jat_im = 0.5f*(1.0f+(1.0f-k)*U[L])*(1.0f-ph[L]*ph[L])*dpsi[L];
-        UL = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[L])*(U[C]-U[L]) + 0.5f*(jat + jat_im)*nx;
+        float jat_im = 0.5f*(1.0f+(1.0f-k)*U[L])*(1.0f-ph[L]*ph[L])*dpsi[L];
+        float UL = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[L])*(U[C]-U[L]) + 0.5f*(jat + jat_im)*nx;
     	 
     	 
         /*# ============================
@@ -340,9 +340,9 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         if (phn2 > eps) {nz = phz / sqrtf(phn2);}
                    else { nz = 0.0f;}    	
   
-        jat_jp = 0.5f*(1.0f+(1.0f-k)*U[T])*(1.0f-ph[T]*ph[T])*dpsi[T];      
+        float jat_jp = 0.5f*(1.0f+(1.0f-k)*U[T])*(1.0f-ph[T]*ph[T])*dpsi[T];      
         
-        UT = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[T])*(U[T]-U[C]) + 0.5f*(jat + jat_jp)*nz;
+        float UT = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[T])*(U[T]-U[C]) + 0.5f*(jat + jat_jp)*nz;
     	 
     	 
         /*# ============================
@@ -354,11 +354,11 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         if (phn2 > eps) {nz = phz / sqrtf(phn2);}
                    else { nz = 0.0f;} 
 
-        jat_jm = 0.5f*(1.0f+(1.0f-k)*U[B])*(1.0f-ph[B]*ph[B])*dpsi[B];              
-        UB = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[B])*(U[C]-U[B]) + 0.5f*(jat + jat_jm)*nz;
+        float jat_jm = 0.5f*(1.0f+(1.0f-k)*U[B])*(1.0f-ph[B]*ph[B])*dpsi[B];              
+        float UB = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[B])*(U[C]-U[B]) + 0.5f*(jat + jat_jm)*nz;
         
-        rhs_U = ( (UR-UL) + (UT-UB) ) * hi + cP.sqrt2 * jat;
-        tau_U = (1.0f+cP.k) - (1.0f-cP.k)*ph[C];
+        float rhs_U = ( (UR-UL) + (UT-UB) ) * hi + cP.sqrt2 * jat;
+        float tau_U = (1.0f+cP.k) - (1.0f-cP.k)*ph[C];
 
         U_new[C] = U[C] + cP.dt * ( rhs_U / tau_U );
 
