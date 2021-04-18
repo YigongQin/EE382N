@@ -267,8 +267,9 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         #
         # =============================================================*/
         float tp = (1.0f-(1.0f-cP.k)*Up);
-        if (tp >= cP.k){float tau_psi = tp*A2;}
-               else {float tau_psi = cP.k*A2;}
+        float tau_psi;
+        if (tp >= cP.k){tau_psi = tp*A2;}
+               else {tau_psi = cP.k*A2;}
         
         dpsi[C] = rhs_psi / tau_psi; 
         
@@ -294,6 +295,7 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         float hi = cP.hi;
         float Dl_tilde = cP.Dl_tilde;
         float k = cP.k;
+        float nx,nz;
         // =============================================================
         // 1. ANISOTROPIC DIFFUSION
         // =============================================================
@@ -311,8 +313,8 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         float phx = ph[R]-ph[C];
         float phz = phipjp - phipjm;
         float phn2 = phx*phx + phz*phz;
-        if (phn2 > eps) {float nx = phx / sqrtf(phn2);}
-                   else { float nx = 0.0f;}
+        if (phn2 > eps) {nx = phx / sqrtf(phn2);}
+                   else {nx = 0.0f;}
         
         float jat_ip = 0.5f*(1.0f+(1.0f-k)*U[R])*(1.0f-ph[R]*ph[R])*dpsi[R];	
         float UR = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[R])*(U[R]-U[C]) + 0.5f*(jat + jat_ip)*nx;
@@ -325,7 +327,7 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         phz = phimjp - phimjm;
         phn2 = phx*phx + phz*phz;
         if (phn2 > eps) {nx = phx / sqrtf(phn2);}
-                   else { nx = 0.0f;}
+                   else {nx = 0.0f;}
         
         float jat_im = 0.5f*(1.0f+(1.0f-k)*U[L])*(1.0f-ph[L]*ph[L])*dpsi[L];
         float UL = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[L])*(U[C]-U[L]) + 0.5f*(jat + jat_im)*nx;
@@ -337,8 +339,8 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         phx = phipjp - phimjp;
         phz = ph[T]-ph[C];
         phn2 = phx*phx + phz*phz;
-        if (phn2 > eps) {float nz = phz / sqrtf(phn2);}
-                   else { float nz = 0.0f;}    	
+        if (phn2 > eps) {nz = phz / sqrtf(phn2);}
+                   else {nz = 0.0f;}    	
   
         float jat_jp = 0.5f*(1.0f+(1.0f-k)*U[T])*(1.0f-ph[T]*ph[T])*dpsi[T];      
         
@@ -352,7 +354,7 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         phz = ph[C]-ph[B];
         phn2 = phx*phx + phz*phz;
         if (phn2 > eps) {nz = phz / sqrtf(phn2);}
-                   else { nz = 0.0f;} 
+                   else {nz = 0.0f;} 
 
         float jat_jm = 0.5f*(1.0f+(1.0f-k)*U[B])*(1.0f-ph[B]*ph[B])*dpsi[B];              
         float UB = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[B])*(U[C]-U[B]) + 0.5f*(jat + jat_jm)*nz;
