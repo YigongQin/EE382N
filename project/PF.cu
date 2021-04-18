@@ -423,7 +423,11 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
 
    }
 
-  cudaFree()
+  cudaFree(x_device); cudaFree(y_device);
+  cudaFree(psi_old); cudaFree(psi_new);
+  cudaFree(phi_old); cudaFree(phi_new);
+  cudaFree(U_old); cudaFree(U_new);
+  cudaFree(dpsi);  
 
 
 }
