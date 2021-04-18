@@ -248,7 +248,7 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         float A2 = atheta(phxn,phzn);
         A2 = A2*A2;
         float gradps2 = (psxn)*(psxn) + (pszn)*(pszn);
-        float extra =  -sqrt2 * A2 * ph[C] * gradps2;
+        float extra =  -cP.sqrt2 * A2 * ph[C] * gradps2;
 
         /*# =============================================================
         #
@@ -267,8 +267,8 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         #
         # =============================================================*/
         float tp = (1.0f-(1.0f-cP.k)*Up);
-        if (tp >= cP.k){tau_psi = tp*A2;}
-               else {tau_psi = cP.k*A2;}
+        if (tp >= cP.k){float tau_psi = tp*A2;}
+               else {float tau_psi = cP.k*A2;}
         
         dpsi[C] = rhs_psi / tau_psi; 
         
@@ -293,7 +293,7 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         int B=C-fnx;
         float hi = cP.hi;
         float Dl_tilde = cP.Dl_tilde;
-
+        float k = cP.k;
         // =============================================================
         // 1. ANISOTROPIC DIFFUSION
         // =============================================================
@@ -311,8 +311,8 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         float phx = ph[R]-ph[C];
         float phz = phipjp - phipjm;
         float phn2 = phx*phx + phz*phz;
-        if (phn2 > eps) {nx = phx / sqrtf(phn2);}
-                   else { nx = 0.0f;}
+        if (phn2 > eps) {float nx = phx / sqrtf(phn2);}
+                   else { float nx = 0.0f;}
         
         float jat_ip = 0.5f*(1.0f+(1.0f-k)*U[R])*(1.0f-ph[R]*ph[R])*dpsi[R];	
         float UR = hi*Dl_tilde*0.5f*(2.0f - ph[C] - ph[R])*(U[R]-U[C]) + 0.5f*(jat + jat_ip)*nx;
@@ -337,8 +337,8 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         phx = phipjp - phimjp;
         phz = ph[T]-ph[C];
         phn2 = phx*phx + phz*phz;
-        if (phn2 > eps) {nz = phz / sqrtf(phn2);}
-                   else { nz = 0.0f;}    	
+        if (phn2 > eps) {float nz = phz / sqrtf(phn2);}
+                   else { float nz = 0.0f;}    	
   
         float jat_jp = 0.5f*(1.0f+(1.0f-k)*U[T])*(1.0f-ph[T]*ph[T])*dpsi[T];      
         
@@ -407,19 +407,19 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
    int num_block_2d = (fnx*fny+blocksize_2d-1)/blocksize_2d;
    int num_block_1d = (fnx+fny+blocksize_1d-1)/blocksize_1d;
 
-   initialize<<< num_block_2d, blocksize_2d >>>(ps_old, ph_old, U_old, ps_new, ph_new, U_new, x_device, y_device, fnx, fny);
+   initialize<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, U_new, x_device, y_device, fnx, fny);
 
 
    for (int kt=0; kt<params.Mt/2; kt++){
 
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt );
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
-     rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi);
+     rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi, fnx, fny);
 
 
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1 );
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
-     rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi);
+     rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi, fnx, fny);
 
    }
 
