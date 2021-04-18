@@ -114,15 +114,17 @@ initialize(float* ps_old, float* ph_old, float* U_old, float* ps_new, float* ph_
   // all the variables should be functions of x and y
   // size (nx+2)*(ny+2), x:nx, y:ny
   if ( (i>0) && (i<fnx-1) && (j>0) && (j<fny-1) ) {
-    float xc = x[i]; 
+    float xc = x[i];
     float yc = y[j];
     int cent = fnx/2;
     ps_old[C] = 5.625f - sqrtf( (xc-x[cent])*(xc-x[cent]) + yc*yc )/cP.W0 ;
+    //if (C<1000){printf("ps %f\n",ps_old[C]);}
     ps_new[C] = ps_old[C];
     U_old[C] = cP.U0;
     U_new[C] = cP.U0;
     ph_old[C] = tanhf(ps_old[C]/cP.sqrt2);
-    ph_new[C] = tanhf(ps_new[C]/cP.sqrt2); 
+    ph_new[C] = tanhf(ps_new[C]/cP.sqrt2);
+  //  if (C<1000){printf("phi %f\n",ph_old[C]);} 
   }
 }
 
@@ -276,7 +278,7 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         
         ps_new[C] = ps[C] +  cP.dt * dpsi[C];
         ph_new[C] = tanhf(ps_new[C]/cP.sqrt2);
-        if (C==1000){printf("%f ",ph_new[C]);}
+        //if (C==1000){printf("%f ",ph_new[C]);}
          }
 } 
 
@@ -374,16 +376,16 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
   // we should have already pass all the data structure in by this time
   // move those data onto device
   printCudaInfo();
-  float* x_device = NULL;
-  float* y_device = NULL;
+  float* x_device;// = NULL;
+  float* y_device;// = NULL;
 
-  float* psi_old = NULL;
-  float* psi_new = NULL;
-  float* U_old = NULL;
-  float* U_new = NULL;
-  float* phi_old = NULL;
-  float* phi_new = NULL;
-  float* dpsi = NULL;
+  float* psi_old;// = NULL;
+  float* psi_new;// = NULL;
+  float* U_old;// = NULL;
+  float* U_new;// = NULL;
+  float* phi_old;// = NULL;
+  float* phi_new;// = NULL;
+  float* dpsi;// = NULL;
   // allocate x, y, phi, psi, U related params
   int length = fnx*fny;
 
@@ -400,9 +402,9 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
 
   cudaMemcpy(x_device, x, sizeof(float) * fnx, cudaMemcpyHostToDevice);
   cudaMemcpy(y_device, y, sizeof(float) * fny, cudaMemcpyHostToDevice);
-  //cudaMemcpy(psi_old, psi, sizeof(float) * length, cudaMemcpyHostToDevice);
-  //cudaMemcpy(phi_old, phi, sizeof(float) * length, cudaMemcpyHostToDevice);
-  //cudaMemcpy(U_old, U, sizeof(float) * length, cudaMemcpyHostToDevice);
+  cudaMemcpy(psi_old, psi, sizeof(float) * length, cudaMemcpyHostToDevice);
+  cudaMemcpy(phi_old, phi, sizeof(float) * length, cudaMemcpyHostToDevice);
+  cudaMemcpy(U_old, U, sizeof(float) * length, cudaMemcpyHostToDevice);
 
   // pass all the read-only params into global constant
   cudaMemcpyToSymbol(cP, &params, sizeof(GlobalConstants));
@@ -413,6 +415,8 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
    int num_block_1d = (fnx+fny+blocksize_1d-1)/blocksize_1d;
    printf("num_block %d, block size %d\n", blocksize_2d, num_block_2d); 
    initialize<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, U_new, x_device, y_device, fnx, fny);
+   set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_new, dpsi, fnx, fny);
+   set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_old, dpsi, fnx, fny);
    cudaDeviceSynchronize();
    double startTime = CycleTimer::currentSeconds();
    for (int kt=0; kt<params.Mt/2; kt++){
@@ -434,8 +438,9 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
    cudaDeviceSynchronize();
    double endTime = CycleTimer::currentSeconds();
    printf("time for %d iterations: %f s\n", params.Mt, endTime-startTime);
-   cudaMemcpy(phi, phi_old, length * sizeof(float),
-               cudaMemcpyDeviceToHost);
+   cudaMemcpy(psi, psi_old, length * sizeof(float),cudaMemcpyDeviceToHost);
+   cudaMemcpy(phi, phi_old, length * sizeof(float),cudaMemcpyDeviceToHost);
+   cudaMemcpy(U, U_old, length * sizeof(float),cudaMemcpyDeviceToHost);
 
   cudaFree(x_device); cudaFree(y_device);
   cudaFree(psi_old); cudaFree(psi_new);

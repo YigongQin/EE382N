@@ -12,6 +12,7 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
+#include "/home1/apps/matlab/2020b/extern/include/mat.h"
 // #include <mat.h> 
 using namespace std;
 
@@ -209,94 +210,66 @@ int main(int argc, char** argv)
         x[i]=(i-1)*params.lxd/params.nx; 
     }
 
-    std::cout<<"x= ";
-    for(int i=0; i<length_x; i++){
-        std::cout<<x[i]<<" ";
-    }
-    std::cout<<std::endl;
+    //std::cout<<"x= ";
+    //for(int i=0; i<length_x; i++){
+    //    std::cout<<x[i]<<" ";
+   // }
+    //std::cout<<std::endl;
 
     // y
     for(int i=0; i<length_y; i++){
         y[i]=(i-1)*params.lyd/params.ny; 
     }
 
-    std::cout<<"y= ";
-    for(int i=0; i<length_y; i++){
-        std::cout<<y[i]<<" ";
-    }
-    std::cout<<std::endl;
+    //std::cout<<"y= ";
+    //for(int i=0; i<length_y; i++){
+    //    std::cout<<y[i]<<" ";
+    //}
+    //std::cout<<std::endl;
 
     int length=length_x*length_y;
     std::cout<<"length of psi, phi, U="<<length<<std::endl;
     float* psi=(float*) malloc(length* sizeof(float));
     float* phi=(float*) malloc(length* sizeof(float));
-    float* U=(float*) malloc(length* sizeof(float));
+    float* Uc=(float*) malloc(length* sizeof(float));
     for(int i=0; i<length; i++){
         psi[i]=0.0;
         phi[i]=0.0;
-        U[i]=0.0;
+        Uc[i]=0.0;
     }
     
+    //std::cout<<"y= ";
+    //for(int i=0+length_y; i<2*length_y; i++){
+    //    std::cout<<phi[i]<<" ";
+    //}
+    //std::cout<<std::endl;
+
+    setup(params, length_x, length_y, x, y, phi, psi, Uc);
+
     std::cout<<"y= ";
     for(int i=0+length_y; i<2*length_y; i++){
-        std::cout<<phi[i]<<" ";
+        std::cout<<Uc[i]<<" ";
     }
     std::cout<<std::endl;
-    setup(params, length_x, length_y, x, y, phi, psi, U);
-    std::cout<<"y= ";
-    for(int i=0+length_y; i<2*length_y; i++){
-        std::cout<<phi[i]<<" ";
-    }
-    std::cout<<std::endl;
-    // // allocate 1_D arrays on GPU: psi_old/psi_new, phi_old/phi_new, U_old/U_new, same size as before
-    // float* psi_old = NULL;
-    // float* psi_new = NULL;
-    // float* U_old = NULL;
-    // float* U_new = NULL;
-    // float* phi_old = NULL;
-    // float* phi_new = NULL;
-    // cudaMalloc((void**)&psi_old, length* sizeof(float));
-    // cudaMalloc((void**)&psi_new, length* sizeof(float));
-    // cudaMalloc((void**)&U_old, length* sizeof(float));
-    // cudaMalloc((void**)&U_new, length* sizeof(float));
-    // cudaMalloc((void**)&phi_old, length* sizeof(float));
-    // cudaMalloc((void**)&phi_new, length* sizeof(float));
-
-    // // copy data from host to device to initialize old version
-    // cudaMemcpy((void *)psi_old, (void *)psi, length* sizeof(float), cudaMemcpyHostToDevice);
-    // cudaMemcpy((void *)U_old, (void *)U, length* sizeof(float), cudaMemcpyHostToDevice);
-    // cudaMemcpy((void *)phi_old, (void *)phi, length* sizeof(float), cudaMemcpyHostToDevice);
-
     // step 3 (time marching): call the kernels Mt times
-    
+    double* phi_arr= new double[length];
+    for(int i=0; i<length; i++){
+         phi_arr[i] = (double) phi[i];
+    } 
     // // step 4: save the psi, phi, U to a .mat file
-    // MATFile *pmat = NULL;
-    // mxArray *pMxArray = NULL;
-
-    // const char *file = "output.mat";
-    // printf("Creating file %s...\n\n", file);
-    // pmat = matOpen(file, "w");
-
-    // int M=(int)param_nx+3;
-    // int N=(int)param_ny+3;
-    // pMxArray = mxCreateDoubleMatrix(M, N, mxREAL);
-
-    // mxSetData(pMxArray, psi_old);
-    // matPutVariable(pmat, "psi", pMxArray);
-    // mxSetData(pMxArray, phi_old);
-    // matPutVariable(pmat, "phi", pMxArray);
-    // mxSetData(pMxArray, U_old);
-    // matPutVariable(pmat, "U", pMxArray);
-
-    // // clean up before exit
-    // mxDestroyArray(pMxArray);
-
-    // if (matClose(pmat) != 0) {
-    //     printf("Error closing file %s\n",file);
-    //     return(EXIT_FAILURE);
-    // }
-
-    // printf("Done\n");
-
+    MATFile *pmatFile = NULL;
+    mxArray *pMxArray = NULL;
+    pmatFile = matOpen("out.mat","w");
+    pMxArray = mxCreateDoubleMatrix(length_x, length_y, mxREAL);
+    mxSetData(pMxArray, phi_arr);
+    matPutVariable(pmatFile, "phi", pMxArray);
+    //mxSetData(pMxArray, phi);
+    //matPutVariable(pmatFile, "phi", pMxArray);
+    //mxSetData(pMxArray, U);
+    //matPutVariable(pmatFile, "U", pMxArray);
+    matClose(pmatFile);
+    delete[] phi;
+    delete[] Uc;
+    delete[] psi;
     return 0;
 }

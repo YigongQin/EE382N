@@ -15,7 +15,9 @@ OBJDIR=objs
 INC_FLAGS=-I../common
 CXX=g++ 
 CXXFLAGS=-O3 -Wall $(INC_FLAGS)
-
+MAT_PATH=/home1/apps/matlab/2020b
+MAT_FLAGS=$(MAT_PATH)/extern/include
+MAT_LDFLAGS=-L$(MAT_PATH)/bin/glnxa64
 ################################################################################
 # When compiling with NVCC, the arch flag (-arch) specifies the name of 
 # the NVIDIA GPU architecture that the CUDA files will be compiled for.
@@ -36,13 +38,15 @@ GENCODE_SM60    := -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,
 GENCODE_SM70    := -gencode arch=compute_70,code=sm_70 -gencode arch=compute_70,code=compute_70
 GENCODE_FLAGS   := $(GENCODE_SM60) # For Pascal architecture
 ################################################################################
-NVCC_LDFLAGS=-L$(CUDA_PATH)/lib64/ -lcudart -Wl,-rpath=$(CUDA_PATH)/lib64
+NVCC_LDFLAGS=-L$(CUDA_PATH)/lib64/ -lcudart -Wl,-rpath=$(CUDA_PATH)/lib64:$(MAT_PATH)/bin/glnxa64
 NVCC=$(CUDA_PATH)/bin/nvcc -ccbin=$(CXX) 
 NVCC_FLAGS=-O3 -m64 $(GENCODE_FLAGS) $(INC_FLAGS)
 
-CXXFLAGS += -I$(CUDA_PATH)/include/ -L$(CUDA_PATH)/lib64/ -lcudart
+#CXXFLAGS += -I$(CUDA_PATH)/include/ -L$(CUDA_PATH)/lib64/ -lcudart
 
 OBJS=$(OBJDIR)/main.o $(OBJDIR)/PF.o 
+
+CXXFLAGS += -I$(CUDA_PATH)/include/ -I$(MAT_FLAGS) $(MAT_LDFLAGS) -L$(CUDA_PATH)/lib64/ -lcudart -lmat -lmx -Wl,-rpath=$(MAT_PATH)/bin/glnxa64
 
 
 .PHONY: dirs clean
