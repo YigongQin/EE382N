@@ -7,7 +7,7 @@
 #include "CycleTimer.h"
 
 using namespace std;
-
+void printCudaInfo();
 extern float toBW(int bytes, float sec);
 
 struct GlobalConstants {
@@ -167,6 +167,7 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
   // if the points are at boundary, return
   if ( (i>0) && (i<fnx-1) && (j>0) && (j<fny-1) ) {
        // find the indices of the 8 neighbors for center
+       //if (C==1000){printf("find");}
        int R=C+1;
        int L=C-1;
        int T=C+fnx;
@@ -274,8 +275,9 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         dpsi[C] = rhs_psi / tau_psi; 
         
         ps_new[C] = ps[C] +  cP.dt * dpsi[C];
-        ph_new[C] = tanhf(ps_new[C]/sqrt2);
-        }
+        ph_new[C] = tanhf(ps_new[C]/cP.sqrt2);
+        //if (C==1000){printf("find");}
+         }
 } 
 
 // U equation
@@ -296,6 +298,7 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
         float Dl_tilde = cP.Dl_tilde;
         float k = cP.k;
         float nx,nz;
+        float eps = cP.eps;
         // =============================================================
         // 1. ANISOTROPIC DIFFUSION
         // =============================================================
@@ -370,7 +373,7 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
 void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U){
   // we should have already pass all the data structure in by this time
   // move those data onto device
-
+  printCudaInfo();
   float* x_device = NULL;
   float* y_device = NULL;
 
@@ -384,16 +387,16 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
   // allocate x, y, phi, psi, U related params
   int length = fnx*fny;
 
-  cudaMalloc(&x_device, sizeof(float) * fnx);
-  cudaMalloc(&y_device, sizeof(float) * fny);
+  cudaMalloc((void **)&x_device, sizeof(float) * fnx);
+  cudaMalloc((void **)&y_device, sizeof(float) * fny);
 
-  cudaMalloc(&phi_old,  sizeof(float) * length);
-  cudaMalloc(&psi_old,  sizeof(float) * length);
-  cudaMalloc(&U_old,    sizeof(float) * length);
-  cudaMalloc(&phi_new,  sizeof(float) * length);
-  cudaMalloc(&psi_new,  sizeof(float) * length);
-  cudaMalloc(&U_new,    sizeof(float) * length);
-  cudaMalloc(&dpsi,    sizeof(float) * length);
+  cudaMalloc((void **)&phi_old,  sizeof(float) * length);
+  cudaMalloc((void **)&psi_old,  sizeof(float) * length);
+  cudaMalloc((void **)&U_old,    sizeof(float) * length);
+  cudaMalloc((void **)&phi_new,  sizeof(float) * length);
+  cudaMalloc((void **)&psi_new,  sizeof(float) * length);
+  cudaMalloc((void **)&U_new,    sizeof(float) * length);
+  cudaMalloc((void **)&dpsi,    sizeof(float) * length);
 
   cudaMemcpy(x_device, x, sizeof(float) * fnx, cudaMemcpyHostToDevice);
   cudaMemcpy(y_device, y, sizeof(float) * fny, cudaMemcpyHostToDevice);
@@ -408,22 +411,31 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
    int blocksize_2d = 512;
    int num_block_2d = (fnx*fny+blocksize_2d-1)/blocksize_2d;
    int num_block_1d = (fnx+fny+blocksize_1d-1)/blocksize_1d;
-
+   printf("num_block %d, block size %d\n", blocksize_2d, num_block_2d); 
    initialize<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, U_new, x_device, y_device, fnx, fny);
-
-
+   cudaDeviceSynchronize();
+   double startTime = CycleTimer::currentSeconds();
    for (int kt=0; kt<params.Mt/2; kt++){
-
+   //  printf("time step %d\n",kt);
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt );
+     cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
+     cudaDeviceSynchronize();
      rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi, fnx, fny);
 
-
+     cudaDeviceSynchronize();
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1 );
+     cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
+     cudaDeviceSynchronize();
      rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi, fnx, fny);
-
+     cudaDeviceSynchronize();
    }
+   cudaDeviceSynchronize();
+   double endTime = CycleTimer::currentSeconds();
+   printf("time for %d iterations: %f ms\n", params.Mt, endTime-startTime);
+   cudaMemcpy(phi, phi_old, length * sizeof(float),
+               cudaMemcpyDeviceToHost);
 
   cudaFree(x_device); cudaFree(y_device);
   cudaFree(psi_old); cudaFree(psi_new);

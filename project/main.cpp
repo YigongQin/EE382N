@@ -15,7 +15,6 @@
 // #include <mat.h> 
 using namespace std;
 
-void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
 
 void printCudaInfo();
 
@@ -61,6 +60,9 @@ struct GlobalConstants {
 
 };
 
+void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
+
+
 // add function for easy retrieving params
 template<class T>
 T get(std::stringstream& ss) 
@@ -99,7 +101,10 @@ int main(int argc, char** argv)
     std::string lineText;
 
     std::ifstream parseFile(fileName);
-
+    float nx;
+    float Mt;
+    float nts;
+    float ictype;
     GlobalConstants params;
     while (parseFile.good()){
         std::getline (parseFile, lineText);
@@ -117,12 +122,16 @@ int main(int argc, char** argv)
         getParam(lineText, "alpha0", params.alpha0);
         getParam(lineText, "dx", params.dx);
         getParam(lineText, "asp_ratio", params.asp_ratio);
-        getParam(lineText, "nx", params.nx);
-        getParam(lineText, "Mt", params.Mt);
+        getParam(lineText, "nx", nx);
+        params.nx = (int)nx;
+        getParam(lineText, "Mt", Mt);
+        params.Mt = (int)Mt;
         getParam(lineText, "eta", params.eta);
         getParam(lineText, "U0", params.U0);
-        getParam(lineText, "nts", params.nts);
-        getParam(lineText, "ictype", params.ictype);
+        getParam(lineText, "nts", nts);
+        params.nts = (int)nts;
+        getParam(lineText, "ictype", ictype);
+        params.ictype = (int)ictype;
     }
     
 
@@ -137,10 +146,10 @@ int main(int argc, char** argv)
     params.Dl_tilde = pow(params.Dl*params.tau0/params.W0,2);
     params.lT_tilde = params.lT/params.W0;
     params.dt = pow(0.8*(params.dx),2)/(4*params.Dl_tilde);
-    params.ny = params.asp_ratio*params.nx;
+    params.ny = (int)params.asp_ratio*params.nx;
     params.lxd = params.dx*params.W0*params.nx; //                    # horizontal length in micron
     params.lyd = params.asp_ratio*params.lxd;
-    params.hi = 1.0/dx;
+    params.hi = 1.0/params.dx;
     params.cosa = cos(params.alpha0/180*M_PI);
     params.sina = sin(params.alpha0/180*M_PI);
     params.sqrt2 = sqrt(2.0);
@@ -222,13 +231,23 @@ int main(int argc, char** argv)
     float* psi=(float*) malloc(length* sizeof(float));
     float* phi=(float*) malloc(length* sizeof(float));
     float* U=(float*) malloc(length* sizeof(float));
-    /*for(int i=0; i<length; i++){
+    for(int i=0; i<length; i++){
         psi[i]=0.0;
         phi[i]=0.0;
         U[i]=0.0;
-    }   */ 
-
+    }
+    
+    std::cout<<"y= ";
+    for(int i=0+length_y; i<2*length_y; i++){
+        std::cout<<phi[i]<<" ";
+    }
+    std::cout<<std::endl;
     setup(params, length_x, length_y, x, y, phi, psi, U);
+    std::cout<<"y= ";
+    for(int i=0+length_y; i<2*length_y; i++){
+        std::cout<<phi[i]<<" ";
+    }
+    std::cout<<std::endl;
     // // allocate 1_D arrays on GPU: psi_old/psi_new, phi_old/phi_new, U_old/U_new, same size as before
     // float* psi_old = NULL;
     // float* psi_new = NULL;
