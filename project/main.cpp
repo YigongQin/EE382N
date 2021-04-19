@@ -246,11 +246,11 @@ int main(int argc, char** argv)
 
     setup(params, length_x, length_y, x, y, phi, psi, Uc);
 
-    std::cout<<"y= ";
-    for(int i=0+length_y; i<2*length_y; i++){
-        std::cout<<Uc[i]<<" ";
-    }
-    std::cout<<std::endl;
+    //std::cout<<"y= ";
+    //for(int i=0+length_y; i<2*length_y; i++){
+    //    std::cout<<Uc[i]<<" ";
+    //}
+    //std::cout<<std::endl;
     // step 3 (time marching): call the kernels Mt times
     double* phi_arr= new double[length];
     for(int i=0; i<length; i++){

@@ -409,11 +409,11 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
   // pass all the read-only params into global constant
   cudaMemcpyToSymbol(cP, &params, sizeof(GlobalConstants));
 
-   int blocksize_1d = 256;
-   int blocksize_2d = 512;
+   int blocksize_1d = 128;
+   int blocksize_2d = 128;  // seems reduce the block size makes it a little faster, but around 128 is okay.
    int num_block_2d = (fnx*fny+blocksize_2d-1)/blocksize_2d;
    int num_block_1d = (fnx+fny+blocksize_1d-1)/blocksize_1d;
-   printf("num_block %d, block size %d\n", blocksize_2d, num_block_2d); 
+   printf("block size %d, # blocks %d\n", blocksize_2d, num_block_2d); 
    initialize<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, U_new, x_device, y_device, fnx, fny);
    set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_new, dpsi, fnx, fny);
    set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_old, dpsi, fnx, fny);
@@ -422,18 +422,18 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
    for (int kt=0; kt<params.Mt/2; kt++){
    //  printf("time step %d\n",kt);
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt );
-     cudaDeviceSynchronize();
+     //cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
-     cudaDeviceSynchronize();
+     //cudaDeviceSynchronize();
      rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi, fnx, fny);
 
-     cudaDeviceSynchronize();
+     //cudaDeviceSynchronize();
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1 );
-     cudaDeviceSynchronize();
+     //cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
-     cudaDeviceSynchronize();
+     //cudaDeviceSynchronize();
      rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi, fnx, fny);
-     cudaDeviceSynchronize();
+     //cudaDeviceSynchronize();
    }
    cudaDeviceSynchronize();
    double endTime = CycleTimer::currentSeconds();
