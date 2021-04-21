@@ -102,11 +102,62 @@ set_BC(float* ps, float* ph, float* U, float* dpsi, int fnx, int fny){
 }
 
 __global__ void
-setNBC(ps,ph,U,dpsi,ph2, px, py, nprocx, nprocy, ha_wd){
+set_BC_mpi(float* ps, float* ph, float* U, float* dpsi, float* ph2, int fnx, int fny, \
+        int px, int py, int nprocx, int nprocy, int ha_wd){
 
-  int C = blockIdx.x * blockDim.x + threadIdx.x;
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+    
+  if ( index<fnx ){
+  // orignially it is 0,2; fny-1, fny-3
+  // now ha_wd-1, ha_wd+1; fny-ha_wd, fny-ha_wd-2
+      if (py==0) {
+          int b_out = index+(ha_wd-1)*fnx;
+          int b_in = index+(ha_wd+1)*fnx;
+
+            ps[b_out] = ps[b_in];
+            ph[b_out] = ph[b_in];
+            U[b_out] = U[b_in];
+            dpsi[b_out] = dpsi[b_in];
+            ph2[b_out] = ph2[b_in];
+            }
+       if (py==nprocy-1) {     
+          int t_out = index+(fny-ha_wd)*fnx;
+          int t_in = index+(fny-ha_wd-2)*fnx;        
+            ps[t_out] = ps[t_in];
+            ph[t_out] = ph[t_in];
+            U[t_out] = U[t_in];
+            dpsi[t_out] = dpsi[t_in];
+            ph2[t_out] = ph2[t_in];
+           }
+  }
+
+  if ( index<fny ){
+  // orignially it is 0,2; fnx-1, fnx-3
+  // now ha_wd-1, ha_wd+1; fnx-ha_wd, fnx-ha_wd-2  
+      if (px==0) {
+      
+         int l_out = index*fnx + ha_wd-1;
+         int l_in = index*fnx + ha_wd+1;
+            ps[l_out] = ps[l_in];
+            ph[l_out] = ph[l_in];
+            U[l_out] = U[l_in];
+            dpsi[l_out] = dpsi[l_in];
+            ph2[l_out] = ph2[l_in];
+      }
+      if (px==nprocx-1){
+      
+         int r_out = index*fnx + fnx-ha_wd;
+         int r_in = index*fnx + fnx-ha_wd-2;    
+            ps[r_out] = ps[r_in];
+            ph[r_out] = ph[r_in];
+            U[r_out] = U[r_in];
+            dpsi[r_out] = dpsi[r_in];
+            ph2[r_out] = ph2[r_in];
+      }
   
-  if ()
+  
+  }
+
 
 
 
