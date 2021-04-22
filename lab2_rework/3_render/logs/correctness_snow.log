@@ -1,0 +1,21 @@
+Rendering to 1024x1024 image
+Loaded scene with 100000 circles
+Loaded scene with 100000 circles
+---------------------------------------------------------
+Initializing CUDA for CudaRenderer
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+
+Running benchmark, 1 frames, beginning at frame 0 ...
+Copying image data from device
+***************** Correctness check passed **************************
+Clear:    0.2719 ms
+Advance:  0.2452 ms
+Render:   26789.7616 ms
+Total:    26790.2788 ms
+
+Overall:  26.8145 sec (note units are seconds)

@@ -1,0 +1,23 @@
+Rendering to 1024x1024 image
+Loaded scene with 100000 circles
+Loaded scene with 100000 circles
+---------------------------------------------------------
+Initializing CUDA for CudaRenderer
+Found 1 CUDA devices
+Device 0: Quadro M1000M
+   SMs:        4
+   Global mem: 4044 MB
+   CUDA Cap:   5.0
+---------------------------------------------------------
+
+Running benchmark, 1 frames, beginning at frame 0 ...
+Copying image data from device
+Mismatch detected at pixel [476][900], value = 0.459916, expected 0.320424 for color Green
+Mismatch detected at pixel [476][900], value = 0.362213, expected 0.248644 for color Blue
+***************** Correctness check passed **************************
+Clear:    0.2684 ms
+Advance:  0.0008 ms
+Render:   26859.5876 ms
+Total:    26859.8568 ms
+
+Overall:  32.1693 sec (note units are seconds)
