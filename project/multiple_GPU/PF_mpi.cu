@@ -50,7 +50,21 @@ struct GlobalConstants {
   float epsilon;
   float a_12;
 
+  int ha_wd;
 };
+
+
+struct BC_buffs{
+   // R>L, T>B
+   // the dimension of each is ha_wd*num_fields*length
+   float* sendR, sendL, sendT, sendB, sendRT, sendRB, sendLT, sendLB;
+   float* recvR, recvL, recvT, recvB, recvRT, recvRB, recvLT, recvLB;
+   
+
+
+}
+
+
 
 __constant__ GlobalConstants cP;
 
@@ -157,22 +171,111 @@ set_BC_mpi(float* ps, float* ph, float* U, float* dpsi, float* ph2, int fnx, int
   }
 }
 
-/*
-__global__ void
-collect(float* ps, float* ph, float* U, float* dpsi, float* ph2, float* BC, int fnx, int fny){
 
+__global__ void
+collect(float* ps, float* ph, float* U, float* dpsi, float* ph2, BC_buffs BC, int fnx, int fny){
+
+  // parallism we have: ha_wd*max(nx,ny)
+  //  int Lx = num_fields*hd*nx;
+  //  int Ly = num_fields*hd*ny;
+  //  int Lxy = num_fields*hd*hd;
+  float *ptr[5]={ps,ph,U,dpsi,ph2};
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int hd = cP.ha_wd;
+  int i = index/hd;  // range [0,max]
+  int j = index-j*hd;  // range [0,hd]
+  int nx = fnx-2*hd; // actual size.
+  int ny = fny-2*hd;
+  int stridexy = hd*hd;
+  if ( (i<ny) && (j<hd)){
+      // left,right length ny
+      int field_indexL = j+hd+(i+hd)*fnx;
+      int field_indexR = j+nx+(i+hd)*fnx;
+      int stridey = hd*ny; // stride is 
+      for (int fid=0; fid<5; fid++) {
+      BC.sendL[index+fid*stridey] = ptr[fid][field_indexL];
+      BC.sendR[index+fid*stridey] = ptr[fid][field_indexR];
+       
+      }
+
+  }
+  
+  if ( (i<nx) && (j<hd)){
+       // up,bottom, length nx
+      int field_indexB = i+hd+(j+hd)*fnx;
+      int field_indexT = i+hd+(j+ny)*fnx;
+      int stridex = hd*nx; // stride is 
+      for (int fid=0; fid<5; fid++) {
+       BC.sendB[index+fid*stridex] = ptr[fid][field_indexB];
+       BC.sendT[index+fid*stridex] = ptr[fid][field_indexT];
+         if (i<hd){
+         int field_indexLB = i+hd+(j+hd)*fnx;
+         int field_indexLT = i+hd+(j+ny)*fnx;
+         int field_indexRB = i+nx+(j+hd)*fnx;
+         int field_indexRT = i+nx+(j+ny)*fnx;
+         BC.sendLB[index+fid*stridexy] = ptr[fid][field_indexLB];
+         BC.sendLT[index+fid*stridexy] = ptr[fid][field_indexLT];
+         BC.sendRB[index+fid*stridexy] = ptr[fid][field_indexRB];
+         BC.sendRT[index+fid*stridexy] = ptr[fid][field_indexRT];
+       
+       }
+      }
+  
+  }
+
+  
 }
 
 __global__ void
-distribute(float* ps, float* ph, float* U, float* dpsi, float* ph2, float* BC, int fnx, int fny){
+distribute(float* ps, float* ph, float* U, float* dpsi, float* ph2, BC_buffs BC, int fnx, int fny){
 
+  float *ptr[5]={ps,ph,U,dpsi,ph2};
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int hd = cP.ha_wd;
+  int i = index/hd;  // range [0,max]
+  int j = index-j*hd;  // range [0,hd]
+  int nx = fnx-2*hd; // actual size.
+  int ny = fny-2*hd;
+  int stridexy = hd*hd;
+
+  if ( (i<ny) && (j<hd)){
+      // left,right length ny
+      int field_indexL = j+(i+hd)*fnx;
+      int field_indexR = j+nx+hd+(i+hd)*fnx;
+      int stridey = hd*ny; // stride is 
+      for (int fid=0; fid<5; fid++) {
+      ptr[fid][field_indexL] = BC.recvL[index+fid*stridey];
+      ptr[fid][field_indexR] = BC.recvR[index+fid*stridey];
+       
+      }
+
+  }
+  
+  if ( (i<nx) && (j<hd)){
+       // up,bottom, length nx
+      int field_indexB = i+hd+(j)*fnx;
+      int field_indexT = i+hd+(j+ny+hd)*fnx;
+      int stridex = hd*nx; // stride is 
+      for (int fid=0; fid<5; fid++) {
+       ptr[fid][field_indexB] = BC.recvB[index+fid*stridex];
+       ptr[fid][field_indexT] = BC.recvT[index+fid*stridex];
+         if (i<hd){
+         int field_indexLB = i+(j)*fnx;
+         int field_indexLT = i+(j+ny+hd)*fnx;
+         int field_indexRB = i+nx+hd+(j)*fnx;
+         int field_indexRT = i+nx+hd+(j+ny+hd)*fnx;
+         ptr[fid][field_indexLB] = BC.recvLB[index+fid*stridexy];
+         ptr[fid][field_indexLT] = BC.recvLT[index+fid*stridexy];
+         ptr[fid][field_indexRB] = BC.recvRB[index+fid*stridexy];
+         ptr[fid][field_indexRT] = BC.recvRT[index+fid*stridexy];
+       
+       }
+      }
+  
+  }
 }
 
-__global__ void
-exchange_BC(float* sendbuf, float* recvbuf, int fnx, int fny, int nt){
 
-
-}*/
 
 __global__ void
 XYT_lin_interp(float* x, float* y, float t, float* X, float* Y, float* T, float u_3d[Nx][Ny][Nt], float* u_m, int fnx, int fny){
@@ -477,6 +580,53 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
        }
 }
 
+
+
+
+
+void allocate_mpi_buffs(GlobalConstants params, BC_buffs DNS, int fnx, int fny){
+
+    int num_fields = 5;
+    int hd = params.ha_wd;
+    int nx = fnx-2*hd;
+    int ny = fny-2*hd;     
+    int Lx = num_fields*hd*nx;
+    int Ly = num_fields*hd*ny;
+    int Lxy = num_fields*hd*hd;
+ 
+    cudaMalloc((void **)&(DNS.sendR),  sizeof(float) * Lx);
+    cudaMalloc((void **)&(DNS.sendL),  sizeof(float) * Lx);
+    cudaMalloc((void **)&(DNS.sendT),  sizeof(float) * Ly);
+    cudaMalloc((void **)&(DNS.sendB),  sizeof(float) * Ly);    
+    cudaMalloc((void **)&(DNS.recvR),  sizeof(float) * Lx);
+    cudaMalloc((void **)&(DNS.recvL),  sizeof(float) * Lx);
+    cudaMalloc((void **)&(DNS.recvT),  sizeof(float) * Ly);
+    cudaMalloc((void **)&(DNS.recvB),  sizeof(float) * Ly);  
+
+    cudaMalloc((void **)&(DNS.sendRT),  sizeof(float) * Lxy);
+    cudaMalloc((void **)&(DNS.sendLT),  sizeof(float) * Lxy);
+    cudaMalloc((void **)&(DNS.sendRB),  sizeof(float) * Lxy);
+    cudaMalloc((void **)&(DNS.sendLB),  sizeof(float) * Lxy);    
+    cudaMalloc((void **)&(DNS.recvRT),  sizeof(float) * Lxy);
+    cudaMalloc((void **)&(DNS.recvLT),  sizeof(float) * Lxy);
+    cudaMalloc((void **)&(DNS.recvRB),  sizeof(float) * Lxy);
+    cudaMalloc((void **)&(DNS.recvLB),  sizeof(float) * Lxy); 
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
 void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U){
   // we should have already pass all the data structure in by this time
   // move those data onto device
@@ -562,6 +712,12 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
 
 }
 
+
+
+exchange_BC(float* sendbuf, float* recvbuf, int fnx, int fny, int nt){
+
+
+}
 /*
 void time_marching(GlobalConstants params, int fnx, int fny){
 
