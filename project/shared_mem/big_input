@@ -34,8 +34,8 @@ Created on Fri May 29 11:10:53 2020
     dx = 1.2                            # mesh width
     dt = 0.8*(dx)**2/(4*Dl_tilde)       # time step size for forward euler
 
-    asp_ratio = 4                  	# aspect ratio
-    nx = 128            		# number of cells in x, number of grids is nx+1
+    asp_ratio = 1                  	# aspect ratio
+    nx = 3000            		# number of cells in x, number of grids is nx+1
     ny = asp_ratio*nx
 
 
