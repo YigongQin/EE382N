@@ -594,14 +594,14 @@ void allocate_mpi_buffs(GlobalConstants params, BC_buffs DNS, int fnx, int fny){
     int Ly = num_fields*hd*ny;
     int Lxy = num_fields*hd*hd;
  
-    cudaMalloc((void **)&(DNS.sendR),  sizeof(float) * Lx);
-    cudaMalloc((void **)&(DNS.sendL),  sizeof(float) * Lx);
-    cudaMalloc((void **)&(DNS.sendT),  sizeof(float) * Ly);
-    cudaMalloc((void **)&(DNS.sendB),  sizeof(float) * Ly);    
-    cudaMalloc((void **)&(DNS.recvR),  sizeof(float) * Lx);
-    cudaMalloc((void **)&(DNS.recvL),  sizeof(float) * Lx);
-    cudaMalloc((void **)&(DNS.recvT),  sizeof(float) * Ly);
-    cudaMalloc((void **)&(DNS.recvB),  sizeof(float) * Ly);  
+    cudaMalloc((void **)&(DNS.sendR),  sizeof(float) * Ly);
+    cudaMalloc((void **)&(DNS.sendL),  sizeof(float) * Ly);
+    cudaMalloc((void **)&(DNS.sendT),  sizeof(float) * Lx);
+    cudaMalloc((void **)&(DNS.sendB),  sizeof(float) * Lx);    
+    cudaMalloc((void **)&(DNS.recvR),  sizeof(float) * Ly);
+    cudaMalloc((void **)&(DNS.recvL),  sizeof(float) * Ly);
+    cudaMalloc((void **)&(DNS.recvT),  sizeof(float) * Lx);
+    cudaMalloc((void **)&(DNS.recvB),  sizeof(float) * Lx);  
 
     cudaMalloc((void **)&(DNS.sendRT),  sizeof(float) * Lxy);
     cudaMalloc((void **)&(DNS.sendLT),  sizeof(float) * Lxy);
@@ -618,7 +618,56 @@ void allocate_mpi_buffs(GlobalConstants params, BC_buffs DNS, int fnx, int fny){
 
 
 
+void exchange_BC(BC_buffs BC, GlobalConstants params, int fnx, int fny, int nt, int rank, int px, int py, int nprocx, int nprocy){
 
+    int ntag = 8*nt;
+    int hd = params.ha_wd;
+    int num_fields = 5;
+    int Lx = num_fields*hd*nx;
+    int Ly = num_fields*hd*ny;
+    int Lxy = num_fields*hd*hd;
+
+
+    if ( px < nprocx-1 ) //right send
+          {MPI_Send(BC.sendR, Ly, MPI_FLOAT, rank+1, ntag+1, comm);}
+    if ( px > 0 )
+          {MPI_Recv(BC.recvL, Ly, MPI_FLOAT, rank-1, ntag+1, comm, MPI_STATUS_IGNORE);}
+    if ( px > 0 ) //left send
+          {MPI_Send(BC.sendL, Ly, MPI_FLOAT, rank-1, ntag+2, comm);}
+    if ( px < nprocx-1 )
+          {MPI_Recv(BC.recvR, Ly, MPI_FLOAT, rank+1, ntag+2, comm, MPI_STATUS_IGNORE);}
+
+
+    if ( py < nprocy-1 ) //top send
+          {MPI_Send(BC.sendT, Lx, MPI_FLOAT, rank+nprocx, ntag+3, comm);}
+    if ( py>0 )
+          {MPI_Recv(BC.recvB, Lx, MPI_FLOAT, rank-nprocx, ntag+3, comm, MPI_STATUS_IGNORE);}
+    if ( py >0 ) //bottom send
+          {MPI_Send(BC.sendB, Lx, MPI_FLOAT, rank-nprocx, ntag+4, comm);}
+    if ( py < nprocy -1 )
+          {MPI_Recv(BC.recvT, Lx, MPI_FLOAT, rank+nprocx, ntag+4, comm, MPI_STATUS_IGNORE);}
+
+
+    if ( px < nprocx-1 and py < nprocy-1)
+          {MPI_Send(BC.sendRT, Lxy, MPI_FLOAT, rank+1+nprocx, ntag+5, comm);}
+    if ( px > 0 and py > 0 )
+          {MPI_Recv(BC.recvLB, Lxy, MPI_FLOAT, rank-1-nprocx, ntag+5, comm, MPI_STATUS_IGNORE);}
+    if ( px > 0 and py > 0)
+          {MPI_Send(BC.sendLB, Lxy, MPI_FLOAT, rank-1-nprocx, ntag+6, comm);}
+    if ( px < nprocx-1 and py < nprocy-1 ):
+          {MPI_Recv(BC.recvRT, Lxy, MPI_FLOAT, rank+1+nprocx, ntag+6, comm, MPI_STATUS_IGNORE);}
+
+
+    if ( py < nprocy-1 and px > 0 ):
+          {MPI_Send(BC.sendLT, Lxy, MPI_FLOAT, rank+nprocx-1, ntag+7, comm);}
+    if ( py>0 and px < nprocx-1 ):
+          {MPI_Recv(BC.recvRB, Lxy, MPI_FLOAT, rank-nprocx+1, ntag+7, comm, MPI_STATUS_IGNORE);}
+    if ( py>0 and px < nprocx-1):
+          {MPI_Send(BC.sendRB, Lxy, MPI_FLOAT, rank-nprocx+1, ntag+8, comm);}
+    if ( py < nprocy -1 and px > 0):
+          {MPI_Recv(BC.recvLT, Lxy, MPI_FLOAT, rank+nprocx-1, ntag+8, comm, MPI_STATUS_IGNORE);}
+
+}
 
 
 
@@ -714,10 +763,7 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
 
 
 
-exchange_BC(float* sendbuf, float* recvbuf, int fnx, int fny, int nt){
 
-
-}
 /*
 void time_marching(GlobalConstants params, int fnx, int fny){
 

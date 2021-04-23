@@ -59,6 +59,7 @@ struct GlobalConstants {
   float epsilon;
   float a_12;
 
+  int ha_wd;
 };
 
 void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
@@ -200,12 +201,7 @@ int main(int argc, char** argv)
     float* x=(float*) malloc(length_x* sizeof(float));
     float* y=(float*) malloc(length_y* sizeof(float));
 
-    // float* x = NULL;
-    // float* y = NULL;
-    // cudaMallocManaged((void**)&x, length_x* sizeof(float));
-    // cudaMallocManaged((void**)&y, length_y* sizeof(float));
 
-    // x
     for(int i=0; i<length_x; i++){
         x[i]=(i-1)*params.lxd/params.nx; 
     }
@@ -243,6 +239,15 @@ int main(int argc, char** argv)
     //    std::cout<<phi[i]<<" ";
     //}
     //std::cout<<std::endl;
+
+
+
+    // other things to add, first temperature field read mat file
+
+
+
+
+
 
     setup(params, length_x, length_y, x, y, phi, psi, Uc);
 
