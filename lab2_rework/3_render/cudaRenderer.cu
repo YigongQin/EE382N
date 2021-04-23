@@ -425,10 +425,12 @@ __global__ void kernelRenderCircles() {
     }
 }
 
-__global__ void kernelRenderSingleCircle(int circleIndex) {
+__global__ void kernelRenderSingleCircle(int circleIndex, short screenMinX, short screenMaxX, short screenMinY, short screenMaxY) {
     //index is pixel here
-    int pixelIndex = blockIdx.x * blockDim.x + threadIdx.x;
-
+    
+    int offsetY=(blockIdx.x * blockDim.x + threadIdx.x)/(screenMaxX-screenMinX);//0 indexed
+    int offsetX=(blockIdx.x * blockDim.x + threadIdx.x)-(screenMaxX-screenMinX)*offsetY;//0 indexed
+    int pixelIndex = (screenMinY+offsetY)*cuConstRendererParams.imageWidth + screenMinX + offsetX;
     if (pixelIndex >= cuConstRendererParams.imageWidth * cuConstRendererParams.imageHeight)
         return;
 
@@ -666,9 +668,31 @@ CudaRenderer::render() {
 
     // 256 threads per block is a healthy number
     dim3 blockDim(256, 1);
-    dim3 gridDim((image->width * image->height + blockDim.x - 1) / blockDim.x);
+    //dim3 gridDim((image->width * image->height + blockDim.x - 1) / blockDim.x);
     for(int circleIndex=0; circleIndex<numCircles; circleIndex++){
-        kernelRenderSingleCircle<<<gridDim, blockDim>>>(circleIndex);
+        int index3 = 3 * circleIndex;
+
+        // read position and radius
+        float3 p = *(float3*)(&position[index3]);
+        float  rad = radius[circleIndex];
+
+        // compute the bounding box of the circle. The bound is in integer
+        // screen coordinates, so it's clamped to the edges of the screen.
+        short imageWidth = image->width;
+        short imageHeight = image->height;
+        short minX = static_cast<short>(imageWidth * (p.x - rad));
+        short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
+        short minY = static_cast<short>(imageHeight * (p.y - rad));
+        short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
+
+        // a bunch of clamps.  Is there a CUDA built-in for this?
+        short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
+        short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
+        short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
+        short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
+
+        dim3 gridDim(((screenMaxX-screenMinX)*(screenMaxY-screenMinY) + blockDim.x - 1) / blockDim.x);
+        kernelRenderSingleCircle<<<gridDim, blockDim>>>(circleIndex, screenMinX, screenMaxX, screenMinY, screenMaxY);
         cudaDeviceSynchronize();
     }
 }
