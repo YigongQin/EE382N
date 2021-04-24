@@ -775,9 +775,10 @@ __global__ void kernelRenderCircles(int* seperators, int* circ_cover_id, int num
     int blockId = blockIdx.y * num_blockx + blockIdx.x;
 
     // obtain start circle and end circle using the seperators
-    int startCirc = seperators[blockId];
-    int endCirc = seperators[blockId+1];
-    int numCircsForCurrentBlock = endCirc - startCirc;
+    // int startCirc = seperators[blockId];
+    // int endCirc = seperators[blockId+1];
+    // int numCircsForCurrentBlock = endCirc - startCirc;
+    int numCircsForCurrentBlock = seperators[blockId];
     
     // we can access the circle id through the circ_cover_id array: N*B
     int startAddInCoverId = numCircles * blockId;
@@ -816,37 +817,39 @@ CudaRenderer::render() {
     dim3 blockDim(256, 1);
     dim3 gridDim((numCircles + blockDim.x - 1) / blockDim.x);
 
-    // // debugging step2
-    // short debug_flag[20] = {1,1,0,0,1, 0,0,1,0,0, 0,1,1,0,0, 0,0,0,1,1};
-    // int debug_flag_result[20];
-    // int debug_id_result[20];
+    // int* debug_flag = new int[20];
+    //  int debug[20]  = {1,1,0,0,1, 0,0,1,0,0, 0,1,1,0,0, 0,0,0,1,1};
+    //  memmove(debug_flag, debug, 20*sizeof(int));
+    //  int* debug_flag_result = new int[20];
+    //  int* debug_id_result = new int[20];
+    //  for (int i = 0; i < 20; i++){
+    //      printf("%d\n", debug_flag[i]);
+    //  }
+    //  int* device_flag;
+    //  int* device_id;
+    //  int* separat_debug;
+    //  int N_rd = nextPow2(4);
+    //  int B = 5;
+    //  int debug_separators[B];
+    //  int total = N_rd*B;
+    //  printf("total %d \n",total);
+    //  cudaMalloc((void **)&device_flag, sizeof(int) * total);
+    //  cudaMalloc((void **)&device_id, sizeof(int) * total);
+    //  cudaMalloc((void **)&separat_debug, sizeof(int) * B);
 
-    // short* device_flag;
-    // int* device_id;
-    // int* separat_debug;
-    // int N_rd = nextPow2(4);
-    // int B = 5;
-    // int debug_separators[B];
-    // int total = N_rd*B;
-    // cudaMalloc((void **)&device_flag, sizeof(int) * total);
-    // cudaMalloc((void **)&device_id, sizeof(int) * total);
-    // cudaMalloc((void **)&separat_debug, sizeof(int) * B);
-        
-    // cudaMemcpy(device_flag, debug_flag, total * sizeof(short),cudaMemcpyHostToDevice);
-    
-    // multi_dim_inclusive_scan(total, N_rd, B, device_flag);
-    // concurrent_write_ids<<<10,10>>>(total, N_rd, B, device_flag,  device_id, separat_debug);
-    
-    // cudaMemcpy(debug_flag_result, device_flag, total * sizeof(int),cudaMemcpyDeviceToHost);
-    // cudaMemcpy(debug_id_result, device_id, total * sizeof(int),cudaMemcpyDeviceToHost);
-    // //print
-    // for (int i = 0; i < 20; i++){
-    //     printf("%d", debug_flag_result);
-    // }
-    // for (int i = 0; i < 20; i++){
-    //     printf("%d", debug_id_result);
-    // }
+    //  cudaMemcpy(device_flag, debug_flag, total * sizeof(int),cudaMemcpyHostToDevice);
+    //  cudaMemset(device_flag, 1, total*sizeof(int));
+    //  //multi_dim_inclusive_scan(total, N_rd, B, device_flag);
+    //  //concurrent_write_ids<<<10,10>>>(total, N_rd, N, B, device_flag,  device_id, separat_debug);
 
+    //  cudaMemcpy(debug_flag_result, device_flag, total * sizeof(int),cudaMemcpyDeviceToHost);
+    //  //cudaMemcpy(debug_id_result, device_id, total * sizeof(int),cudaMemcpyDeviceToHost);
+    //  //print
+    //  for (int i = 0; i < 20; i++){
+    //      printf("%d\n", debug_flag_result[i]);
+    //  }
+    //  printf("\n");
+     
 // //------Yigong adding----
     // short, int, long long int should be justified
     int num_circ_rd = nextPow2(numCircles); //rounded numCircles
@@ -913,4 +916,5 @@ CudaRenderer::render() {
     cudaFree(circ_cover_flag);
     cudaFree(circ_cover_id);
     cudaFree(separators);
+    
 }
