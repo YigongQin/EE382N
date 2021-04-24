@@ -13,6 +13,7 @@
 #include "noise.h"
 #include "sceneLoader.h"
 #include "util.h"
+#include "CycleTimer.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
@@ -692,7 +693,7 @@ CudaRenderer::advanceAnimation() {
 
 void
 CudaRenderer::render() {
-
+    double time1 = CycleTimer::currentSeconds();
     // 256 threads per block is a healthy number
     dim3 blockDim(256, 1);
     //dim3 gridDim((image->width * image->height + blockDim.x - 1) / blockDim.x);
@@ -716,6 +717,7 @@ CudaRenderer::render() {
     dim3 gridDim_1((numCircles + blockDim.x - 1) / blockDim.x);
     getBounds<<<gridDim_1, blockDim>>>(screenMinX_device, screenMaxX_device, screenMinY_device, screenMaxY_device);
     cudaDeviceSynchronize();
+    double time2 = CycleTimer::currentSeconds();
     int screenMinX[numCircles];
     int screenMaxX[numCircles];
     int screenMinY[numCircles];
@@ -724,21 +726,24 @@ CudaRenderer::render() {
     cudaMemcpy(screenMaxX, screenMaxX_device, (numCircles)*sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(screenMinY, screenMinY_device, (numCircles)*sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(screenMaxY, screenMaxY_device, (numCircles)*sizeof(int), cudaMemcpyDeviceToHost);
-    printf("executed here 1\n");
+    //printf("executed here 1\n");
     // cudaStream_t stream[numCircles];
     // for (int i=0; i <numCircles; i++){
     //   cudaStreamCreate(&stream[i]);
     // }
+    double time3 = CycleTimer::currentSeconds();
     for(int circleIndex=0; circleIndex<numCircles; circleIndex++){
-        printf("executed here 2\n");
+        //printf("executed here 2\n");
         dim3 gridDim(((screenMaxX[circleIndex]-screenMinX[circleIndex])*(screenMaxY[circleIndex]-screenMinY[circleIndex]) + blockDim.x - 1) / blockDim.x);
         kernelRenderSingleCircle<<<gridDim, blockDim>>>(circleIndex, screenMinX[circleIndex], screenMaxX[circleIndex], screenMinY[circleIndex], screenMaxY[circleIndex]);
         // cudaError_t errCode = cudaPeekAtLastError();
         // if (errCode != cudaSuccess) {
         //     fprintf(stderr, "WARNING: A CUDA error occured: code=%d, %s\n", errCode, cudaGetErrorString(errCode));
         // }
-        cudaDeviceSynchronize();
-        printf("executed here 3\n");
+        //cudaDeviceSynchronize();
+        //printf("executed here 3\n");
     }
     cudaDeviceSynchronize();
+    double time4 = CycleTimer::currentSeconds();
+    printf("time: %f, %f, %f\n", time2-time1, time3-time2, time4-time3);
 }
