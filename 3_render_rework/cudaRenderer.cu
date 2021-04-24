@@ -401,6 +401,7 @@ shadePixel(int circleIndex, float2 pixelCenter, float3 p, float4* imagePtr) {
 // Each thread renders a circle.  Since there is no protection to
 // ensure order of update or mutual exclusion on the output image, the
 // resulting image will be incorrect.
+/*
 __global__ void kernelRenderCircles() {
 
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -443,7 +444,7 @@ __global__ void kernelRenderCircles() {
         }
     }
 }
-
+*/
 ////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -722,7 +723,7 @@ void multi_dim_inclusive_scan(int N, int lens, int dim, array_type* device_resul
 __global__ void findCircsInBlock(array_type* circ_cover_flag, int num_total_blocks, int num_blockx, int num_blocky) {
     // step1: find the circle idx and find the block idx
     int Idx = blockDim.x * blockIdx.x + threadIdx.x; // B*numCircles
-
+    if (Idx>= cuConstRendererParams.numCircles*num_total_blocks) {return;}
     int circleId = Idx / num_total_blocks; //obtain the circle Id
     int blockId  = Idx % num_total_blocks; //obtain the block Id
     // step2: justify whether this circle is in this block
@@ -869,7 +870,7 @@ __global__ void kernelRenderCircles(int* seperators, int* circ_cover_id, int num
 
     // obtain block id
     int blockId = blockIdx.y * num_blockx + blockIdx.x;
-
+    if (blockId>=num_blockx*num_blocky) {return;}
     // obtain start circle and end circle using the seperators
     // int startCirc = seperators[blockId];
     // int endCirc = seperators[blockId+1];
@@ -899,6 +900,7 @@ __global__ void kernelRenderCircles(int* seperators, int* circ_cover_id, int num
     // AT: update by order
     for (int idx = 0; idx < numCircsForCurrentBlock; idx++){
         int circleIdx = circ_cover_id[startAddInCoverId + idx];
+        if ( (pixelX%num_blockx==0) && (pixelY%num_blocky==0))  {printf("%d ",circleIdx);}
         int index3 = circleIdx * 3;
         // read postion and radius then use shadePixel to update
         float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
@@ -912,6 +914,10 @@ CudaRenderer::render() {
     // 256 threads per block is a healthy number
     dim3 blockDim(256, 1);
     dim3 gridDim((numCircles + blockDim.x - 1) / blockDim.x);
+
+    debug_set1();
+    debug_set2();
+
 // //------Yigong adding----
     // short, int, long long int should be justified
     int num_circ_rd = nextPow2(numCircles); //rounded numCircles
@@ -923,7 +929,11 @@ CudaRenderer::render() {
     int num_blockx = (image->width+block_dimx-1)/block_dimx;
     int num_blocky = (image->height+block_dimy-1)/block_dimy;    
     int num_total_blocks = num_blockx*num_blocky;
+    printf("%d\n",num_total_blocks);
     long total_size = numCircles*num_total_blocks;
+    long total_size_rd = num_circ_rd*num_total_blocks;
+    int* check_ids = new int[total_size];
+    int* check_sps = new int[num_total_blocks];
     // long total_size = numCircles;
     //int* circ_loca_ids; // concatenation of num_total_blocks variable-size arrays
     // size of this array is not determined yet, should be gotten from scan
@@ -931,10 +941,10 @@ CudaRenderer::render() {
     
     // the grid size we process now is total_size;
     int block_size_1d = 512; // can ajust
-    int num_block_1d = (total_size+block_size_1d-1)/block_size_1d;
+    int num_block_1d = (total_size_rd+block_size_1d-1)/block_size_1d;
     
-    cudaMalloc((void **)&circ_cover_flag, sizeof(array_type) * total_size);
-    cudaMemset(circ_cover_flag, 0, sizeof(array_type) * total_size); // set to 0 to prevent error
+    cudaMalloc((void **)&circ_cover_flag, sizeof(array_type) * total_size_rd);
+    cudaMemset(circ_cover_flag, 0, sizeof(array_type) * total_size_rd); // set to 0 to prevent error
 
     cudaMalloc((void **)&circ_cover_id, sizeof(int) * total_size);
     cudaMalloc((void **)&separators, sizeof(int) * num_total_blocks);
@@ -956,13 +966,26 @@ CudaRenderer::render() {
     //step2: use a multidimensional scan to find the number of circles each block and this ids
     //save 2 1d arrays: the location increment in the array, the separators.
     //(1) scan the array obtained above
-    multi_dim_inclusive_scan(total_size, num_circ_rd, num_total_blocks, circ_cover_flag);  //check circ_cover_flag
+    multi_dim_inclusive_scan(total_size_rd, num_circ_rd, num_total_blocks, circ_cover_flag);  //check circ_cover_flag
     //(2) concurrent_write id and separators
+    cudaDeviceSynchronize();
     concurrent_write_ids<<<num_block_1d,block_size_1d>>>(total_size, num_circ_rd, numCircles, num_total_blocks, \
         circ_cover_flag,  circ_cover_id, separators); //check circ_cover_id,separators
     //right now, the last 
     cudaDeviceSynchronize();
-    
+
+
+    cudaMemcpy(check_ids, circ_cover_id, total_size * sizeof(int),cudaMemcpyDeviceToHost);
+    for (int i = 0; i < total_size; i++){
+        printf("%d ", check_ids[i]);
+    }
+        printf("\n");
+    printf("\n"); 
+    cudaMemcpy(check_sps, separators, num_total_blocks * sizeof(int),cudaMemcpyDeviceToHost);
+    for (int i = 0; i < num_total_blocks; i++){
+        printf("%d ",  check_sps[i]);
+    }
+    printf("\n"); 
     //step3: use the separators and circ_cover_id to render the circle
     // define dim for block
     dim3 blockDimBlock(block_dimx, block_dimy);
