@@ -424,11 +424,40 @@ __global__ void kernelRenderCircles() {
         }
     }
 }
+__global__ void getBounds(int* screenMinX, int* screenMaxX, int* screenMinY, int* screenMaxY){
+    int circleIndex = blockIdx.x * blockDim.x + threadIdx.x;
 
-__global__ void kernelRenderSingleCircle(int circleIndex) {
+    if (circleIndex >= cuConstRendererParams.numCircles)
+        return;
+
+    int index3 = 3 * circleIndex;
+
+    // read position and radius
+    float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
+    float  rad = cuConstRendererParams.radius[circleIndex];
+
+    // compute the bounding box of the circle. The bound is in integer
+    // screen coordinates, so it's clamped to the edges of the screen.
+    short imageWidth = cuConstRendererParams.imageWidth;
+    short imageHeight = cuConstRendererParams.imageHeight;
+    short minX = static_cast<short>(imageWidth * (p.x - rad));
+    short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
+    short minY = static_cast<short>(imageHeight * (p.y - rad));
+    short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
+
+    // a bunch of clamps.  Is there a CUDA built-in for this?
+    screenMinX[circleIndex] = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
+    screenMaxX[circleIndex] = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
+    screenMinY[circleIndex] = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
+    screenMaxY[circleIndex] = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
+    
+}
+__global__ void kernelRenderSingleCircle(int circleIndex, int screenMinX, int screenMaxX, int screenMinY, int screenMaxY) {
     //index is pixel here
-    int pixelIndex = blockIdx.x * blockDim.x + threadIdx.x;
-
+    
+    int offsetY=(blockIdx.x * blockDim.x + threadIdx.x)/(screenMaxX-screenMinX);//0 indexed
+    int offsetX=(blockIdx.x * blockDim.x + threadIdx.x)-(screenMaxX-screenMinX)*offsetY;//0 indexed
+    int pixelIndex = (screenMinY+offsetY)*cuConstRendererParams.imageWidth + screenMinX + offsetX;
     if (pixelIndex >= cuConstRendererParams.imageWidth * cuConstRendererParams.imageHeight)
         return;
 
@@ -666,9 +695,32 @@ CudaRenderer::render() {
 
     // 256 threads per block is a healthy number
     dim3 blockDim(256, 1);
-    dim3 gridDim((image->width * image->height + blockDim.x - 1) / blockDim.x);
+    //dim3 gridDim((image->width * image->height + blockDim.x - 1) / blockDim.x);
+    int* screenMinX;
+    int* screenMaxX;
+    int* screenMinY;
+    int* screenMaxY;
+    //printf("%d\n", numCircles);
+    cudaMallocManaged((void**)(&screenMinX), (numCircles)*sizeof(int));
+    //cudaMemset(screenMinX, 0, sizeof(int) * numCircles);
+    cudaMallocManaged((void**)(&screenMaxX), (numCircles)*sizeof(int));
+    //cudaMemset(screenMaxX, 0, sizeof(int) * numCircles);
+    cudaMallocManaged((void**)(&screenMinY), (numCircles)*sizeof(int));
+    //cudaMemset(screenMinY, 0, sizeof(int) * numCircles);
+    cudaMallocManaged((void**)(&screenMaxY), (numCircles)*sizeof(int));
+    //cudaMemset(screenMaxY, 0, sizeof(int) * numCircles);
+    // cudaError_t errCode = cudaPeekAtLastError();
+    // if (errCode != cudaSuccess) {
+    //     fprintf(stderr, "WARNING: A CUDA error occured: code=%d, %s\n", errCode, cudaGetErrorString(errCode));
+    // }
+    dim3 gridDim_1((numCircles + blockDim.x - 1) / blockDim.x);
+    getBounds<<<gridDim_1, blockDim>>>(screenMinX, screenMaxX, screenMinY, screenMaxY);
+    cudaDeviceSynchronize();
+    //printf("executed here\n");
+    
     for(int circleIndex=0; circleIndex<numCircles; circleIndex++){
-        kernelRenderSingleCircle<<<gridDim, blockDim>>>(circleIndex);
+        dim3 gridDim(((screenMaxX[circleIndex]-screenMinX[circleIndex])*(screenMaxY[circleIndex]-screenMinY[circleIndex]) + blockDim.x - 1) / blockDim.x);
+        kernelRenderSingleCircle<<<gridDim, blockDim>>>(circleIndex, screenMinX[circleIndex], screenMaxX[circleIndex], screenMinY[circleIndex], screenMaxY[circleIndex]);
         cudaDeviceSynchronize();
     }
 }
