@@ -696,31 +696,49 @@ CudaRenderer::render() {
     // 256 threads per block is a healthy number
     dim3 blockDim(256, 1);
     //dim3 gridDim((image->width * image->height + blockDim.x - 1) / blockDim.x);
-    int* screenMinX;
-    int* screenMaxX;
-    int* screenMinY;
-    int* screenMaxY;
+    int* screenMinX_device;
+    int* screenMaxX_device;
+    int* screenMinY_device;
+    int* screenMaxY_device;
     //printf("%d\n", numCircles);
-    cudaMallocManaged((void**)(&screenMinX), (numCircles)*sizeof(int));
+    cudaMalloc((void**)(&screenMinX_device), (numCircles)*sizeof(int));
     //cudaMemset(screenMinX, 0, sizeof(int) * numCircles);
-    cudaMallocManaged((void**)(&screenMaxX), (numCircles)*sizeof(int));
+    cudaMalloc((void**)(&screenMaxX_device), (numCircles)*sizeof(int));
     //cudaMemset(screenMaxX, 0, sizeof(int) * numCircles);
-    cudaMallocManaged((void**)(&screenMinY), (numCircles)*sizeof(int));
+    cudaMalloc((void**)(&screenMinY_device), (numCircles)*sizeof(int));
     //cudaMemset(screenMinY, 0, sizeof(int) * numCircles);
-    cudaMallocManaged((void**)(&screenMaxY), (numCircles)*sizeof(int));
+    cudaMalloc((void**)(&screenMaxY_device), (numCircles)*sizeof(int));
     //cudaMemset(screenMaxY, 0, sizeof(int) * numCircles);
     // cudaError_t errCode = cudaPeekAtLastError();
     // if (errCode != cudaSuccess) {
     //     fprintf(stderr, "WARNING: A CUDA error occured: code=%d, %s\n", errCode, cudaGetErrorString(errCode));
     // }
     dim3 gridDim_1((numCircles + blockDim.x - 1) / blockDim.x);
-    getBounds<<<gridDim_1, blockDim>>>(screenMinX, screenMaxX, screenMinY, screenMaxY);
+    getBounds<<<gridDim_1, blockDim>>>(screenMinX_device, screenMaxX_device, screenMinY_device, screenMaxY_device);
     cudaDeviceSynchronize();
-    //printf("executed here\n");
-    
+    int screenMinX[numCircles];
+    int screenMaxX[numCircles];
+    int screenMinY[numCircles];
+    int screenMaxY[numCircles];
+    cudaMemcpy(screenMinX, screenMinX_device, (numCircles)*sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(screenMaxX, screenMaxX_device, (numCircles)*sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(screenMinY, screenMinY_device, (numCircles)*sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(screenMaxY, screenMaxY_device, (numCircles)*sizeof(int), cudaMemcpyDeviceToHost);
+    printf("executed here 1\n");
+    // cudaStream_t stream[numCircles];
+    // for (int i=0; i <numCircles; i++){
+    //   cudaStreamCreate(&stream[i]);
+    // }
     for(int circleIndex=0; circleIndex<numCircles; circleIndex++){
+        printf("executed here 2\n");
         dim3 gridDim(((screenMaxX[circleIndex]-screenMinX[circleIndex])*(screenMaxY[circleIndex]-screenMinY[circleIndex]) + blockDim.x - 1) / blockDim.x);
         kernelRenderSingleCircle<<<gridDim, blockDim>>>(circleIndex, screenMinX[circleIndex], screenMaxX[circleIndex], screenMinY[circleIndex], screenMaxY[circleIndex]);
+        // cudaError_t errCode = cudaPeekAtLastError();
+        // if (errCode != cudaSuccess) {
+        //     fprintf(stderr, "WARNING: A CUDA error occured: code=%d, %s\n", errCode, cudaGetErrorString(errCode));
+        // }
         cudaDeviceSynchronize();
+        printf("executed here 3\n");
     }
+    cudaDeviceSynchronize();
 }
