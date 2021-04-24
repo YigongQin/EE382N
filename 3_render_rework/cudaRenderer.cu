@@ -14,7 +14,7 @@
 #include "sceneLoader.h"
 #include "util.h"
 
-#define array_type short
+#define array_type int
 // #define array_type int
 #define BLOCK_DIM_X 32
 #define BLOCK_DIM_Y 32
@@ -675,7 +675,7 @@ incl_sweep_down(int N, int dim, int twod, int twod1, array_type* output) {
 //--- the above should be correct
 
 __global__ void
-concurrent_write_ids(int total_size, int num_circ, int num_boxes, array_type* circ_cover_flag, int* circ_cover_id, int* separators){
+concurrent_write_ids(int total_size, int num_circ, int num_circ_true, int num_boxes, array_type* circ_cover_flag, int* circ_cover_id, int* separators){
 
      //
      int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -683,18 +683,20 @@ concurrent_write_ids(int total_size, int num_circ, int num_boxes, array_type* ci
      int blockid = index-num_boxes*circleid;
      if (index<total_size){
          if (circleid==0){
-               if (circ_cover_flag[index]==0){
-                   int new_loc = num_circ*blockid;
+               if (circ_cover_flag[index]==1){
+                   int new_loc = num_circ_true*blockid;
+                   //printf("index %d, new_loc %d", index, new_loc);
                    circ_cover_id[new_loc]=0;}}
          else{
                if ( circ_cover_flag[index] - circ_cover_flag[index-num_boxes] ==1){
-                int new_loc = blockid*num_circ +circ_cover_flag[index] -1;
+                int new_loc = blockid*num_circ_true +circ_cover_flag[index] -1;
                 circ_cover_id[new_loc] = circleid; }
               }
          
      }
      //update the separators by the way
-     if (index<num_boxes) {separators[index]=circ_cover_flag[(num_circ-1)*num_boxes+index];}
+     if (index<num_boxes) {separators[index]=circ_cover_flag[(num_circ_true-1)*num_boxes+index];}
+                           // printf(" separa %d, loca %d", separators[index], (num_circ_true-1)*num_boxes+index);}
 }
 
 
@@ -775,10 +777,9 @@ __global__ void kernelRenderCircles(int* seperators, int* circ_cover_id, int num
     int blockId = blockIdx.y * num_blockx + blockIdx.x;
 
     // obtain start circle and end circle using the seperators
-    // int startCirc = seperators[blockId];
-    // int endCirc = seperators[blockId+1];
-    // int numCircsForCurrentBlock = endCirc - startCirc;
-    int numCircsForCurrentBlock = seperators[blockId];
+    int startCirc = seperators[blockId];
+    int endCirc = seperators[blockId+1];
+    int numCircsForCurrentBlock = endCirc - startCirc;
     
     // we can access the circle id through the circ_cover_id array: N*B
     int startAddInCoverId = numCircles * blockId;
@@ -810,6 +811,103 @@ __global__ void kernelRenderCircles(int* seperators, int* circ_cover_id, int num
     }
 }
 
+
+void debug_set1(){
+     int* debug_flag=  new int[20]; 
+     int debug[20]  = {1,1,0,0,1, 0,0,1,0,0, 0,1,1,0,0, 0,0,0,1,1};
+     memmove(debug_flag, debug, 20*sizeof(int));
+     int* debug_flag_result = new int[20];
+     int* debug_id_result = new int[20];
+     for (int i = 0; i < 20; i++){
+         printf("%d ", debug_flag[i]);
+     }
+     printf("\n");
+     int* device_flag;
+     int* device_id;
+     int* device_separat;
+     int N_rd = nextPow2(4);
+     int B = 5;
+     int* debug_separators = new int[B];
+     int total = N_rd*B;
+     printf("total %d \n",total);
+     cudaMalloc((void **)&device_flag, sizeof(int) * total);
+     cudaMalloc((void **)&device_id, sizeof(int) * total);
+     cudaMalloc((void **)&device_separat, sizeof(int) * B);
+
+     cudaMemcpy(device_flag, debug_flag, total * sizeof(int),cudaMemcpyHostToDevice);
+     multi_dim_inclusive_scan(total, N_rd, B, device_flag);
+     concurrent_write_ids<<<10,10>>>(total, N_rd, 4, B, device_flag,  device_id, device_separat);
+
+     cudaMemcpy(debug_flag_result, device_flag, total * sizeof(int),cudaMemcpyDeviceToHost);
+     cudaMemcpy(debug_id_result, device_id, total * sizeof(int),cudaMemcpyDeviceToHost);
+     cudaMemcpy(debug_separators, device_separat, B * sizeof(int),cudaMemcpyDeviceToHost);
+     //cudaMemcpy(debug_id_result, device_id, total * sizeof(int),cudaMemcpyDeviceToHost);
+     //print
+     for (int i = 0; i < 20; i++){
+         printf("%d ", debug_flag_result[i]);
+     }
+     printf("\n");
+     for (int i = 0; i < 20; i++){
+         printf("%d ", debug_id_result[i]);
+     }
+     printf("\n");
+     for (int i = 0; i < B; i++){
+         printf("%d ", debug_separators[i]);
+     }
+     printf("\n");
+
+}
+
+void debug_set2(){
+     int* debug_flag=  new int[20];
+     int debug[20]  = {1,1,0,0,1, 0,0,1,0,0, 0,1,1,0,0, 0,0,0,1,1};
+     memmove(debug_flag, debug, 20*sizeof(int));
+     int* debug_flag_result = new int[20];
+     int* debug_id_result = new int[20];
+     for (int i = 0; i < 20; i++){
+         printf("%d ", debug_flag[i]);
+     }
+     printf("\n");
+     int* device_flag;
+     int* device_id;
+     int* device_separat;
+     int N=5;
+     int N_rd = nextPow2(N);
+     int B = 4;
+     int* debug_separators = new int[B];
+     int total = N_rd*B;
+     int total_rd = N_rd*B;
+     printf("total %d \n",total_rd);
+     cudaMalloc((void **)&device_flag, sizeof(int) * total_rd);
+     cudaMalloc((void **)&device_id, sizeof(int) * total_rd);
+     cudaMalloc((void **)&device_separat, sizeof(int) * B);
+
+     cudaMemcpy(device_flag, debug_flag, total * sizeof(int),cudaMemcpyHostToDevice);
+     multi_dim_inclusive_scan(total_rd, N_rd, B, device_flag);
+     concurrent_write_ids<<<10,10>>>(total, N_rd, N, B, device_flag,  device_id, device_separat);
+
+     cudaMemcpy(debug_flag_result, device_flag, total * sizeof(int),cudaMemcpyDeviceToHost);
+     cudaMemcpy(debug_id_result, device_id, total_rd * sizeof(int),cudaMemcpyDeviceToHost);
+     cudaMemcpy(debug_separators, device_separat, B * sizeof(int),cudaMemcpyDeviceToHost);
+     //cudaMemcpy(debug_id_result, device_id, total * sizeof(int),cudaMemcpyDeviceToHost);
+     //print
+     for (int i = 0; i < 20; i++){
+         printf("%d ", debug_flag_result[i]);
+     }
+     printf("\n");
+     for (int i = 0; i < 20; i++){
+         printf("%d ", debug_id_result[i]);
+     }
+     printf("\n");
+     for (int i = 0; i < B; i++){
+         printf("%d ", debug_separators[i]);
+     }
+     printf("\n");
+
+}
+
+
+
 void
 CudaRenderer::render() {
 
@@ -817,39 +915,11 @@ CudaRenderer::render() {
     dim3 blockDim(256, 1);
     dim3 gridDim((numCircles + blockDim.x - 1) / blockDim.x);
 
-    // int* debug_flag = new int[20];
-    //  int debug[20]  = {1,1,0,0,1, 0,0,1,0,0, 0,1,1,0,0, 0,0,0,1,1};
-    //  memmove(debug_flag, debug, 20*sizeof(int));
-    //  int* debug_flag_result = new int[20];
-    //  int* debug_id_result = new int[20];
-    //  for (int i = 0; i < 20; i++){
-    //      printf("%d\n", debug_flag[i]);
-    //  }
-    //  int* device_flag;
-    //  int* device_id;
-    //  int* separat_debug;
-    //  int N_rd = nextPow2(4);
-    //  int B = 5;
-    //  int debug_separators[B];
-    //  int total = N_rd*B;
-    //  printf("total %d \n",total);
-    //  cudaMalloc((void **)&device_flag, sizeof(int) * total);
-    //  cudaMalloc((void **)&device_id, sizeof(int) * total);
-    //  cudaMalloc((void **)&separat_debug, sizeof(int) * B);
+    // // debugging step2
+    debug_set1();
+    debug_set2();
 
-    //  cudaMemcpy(device_flag, debug_flag, total * sizeof(int),cudaMemcpyHostToDevice);
-    //  cudaMemset(device_flag, 1, total*sizeof(int));
-    //  //multi_dim_inclusive_scan(total, N_rd, B, device_flag);
-    //  //concurrent_write_ids<<<10,10>>>(total, N_rd, N, B, device_flag,  device_id, separat_debug);
 
-    //  cudaMemcpy(debug_flag_result, device_flag, total * sizeof(int),cudaMemcpyDeviceToHost);
-    //  //cudaMemcpy(debug_id_result, device_id, total * sizeof(int),cudaMemcpyDeviceToHost);
-    //  //print
-    //  for (int i = 0; i < 20; i++){
-    //      printf("%d\n", debug_flag_result[i]);
-    //  }
-    //  printf("\n");
-     
 // //------Yigong adding----
     // short, int, long long int should be justified
     int num_circ_rd = nextPow2(numCircles); //rounded numCircles
@@ -896,7 +966,7 @@ CudaRenderer::render() {
     //(1) scan the array obtained above
     multi_dim_inclusive_scan(total_size, num_circ_rd, num_total_blocks, circ_cover_flag);  //check circ_cover_flag
     //(2) concurrent_write id and separators
-    concurrent_write_ids<<<num_block_1d,block_size_1d>>>(total_size, num_circ_rd, num_total_blocks, \
+    concurrent_write_ids<<<num_block_1d,block_size_1d>>>(total_size, num_circ_rd, numCircles, num_total_blocks, \
     circ_cover_flag,  circ_cover_id, separators); //check circ_cover_id,separators
     //right now, the last 
     cudaDeviceSynchronize();
@@ -912,9 +982,8 @@ CudaRenderer::render() {
     //step4: small size
 
 //-------
-    
+    //cudaFree(device_flag); 
     cudaFree(circ_cover_flag);
     cudaFree(circ_cover_id);
     cudaFree(separators);
-    
 }
