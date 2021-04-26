@@ -80,8 +80,19 @@ struct params_MPI{
     int ny_loc;
 };
 
+struct Mac_input{
+  int Nx;
+  int Ny;
+  int Nt;
+  float* X_mac; 
+  float* Y_mac; 
+  float* t_mac;
+  float* alpha_mac;
+  float* T_3D;
+};
 
-void setup(MPI_Comm comm, params_MPI pM, GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
+
+void setup(MPI_Comm comm, params_MPI pM, GlobalConstants params, Mac_input mac, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
 
 
 // add function for easy retrieving params

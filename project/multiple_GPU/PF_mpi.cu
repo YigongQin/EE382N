@@ -3,7 +3,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <driver_functions.h>
-
+#include <mpi.h>
 #include "CycleTimer.h"
 
 using namespace std;
@@ -50,19 +50,48 @@ struct GlobalConstants {
   float epsilon;
   float a_12;
 
+  float Ti;
   int ha_wd;
+  int Mnx;
+  int Mny;
+  int Mnt;
+  float xmin;
+  float ymin;
+  
 };
 
+struct params_MPI{
 
+    int rank;
+    int px;
+    int py;
+    int nproc;
+    int nprocx;
+    int nprocy;
+    int nx_loc;
+    int ny_loc;
+};
+
+struct Mac_input{
+  int Nx;
+  int Ny;
+  int Nt;
+  float* X_mac; 
+  float* Y_mac; 
+  float* t_mac;
+  float* alpha_mac;
+  float* T_3D;
+};
+  
 struct BC_buffs{
    // R>L, T>B
    // the dimension of each is ha_wd*num_fields*length
-   float* sendR, sendL, sendT, sendB, sendRT, sendRB, sendLT, sendLB;
-   float* recvR, recvL, recvT, recvB, recvRT, recvRB, recvLT, recvLB;
+   float *sendR, *sendL, *sendT, *sendB, *sendRT, *sendRB, *sendLT, *sendLB;
+   float *recvR, *recvL, *recvT, *recvB, *recvRT, *recvRB, *recvLT, *recvLB;
    
 
 
-}
+};
 
 
 
@@ -183,7 +212,7 @@ collect(float* ps, float* ph, float* U, float* dpsi, float* ph2, BC_buffs BC, in
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int hd = cP.ha_wd;
   int i = index/hd;  // range [0,max]
-  int j = index-j*hd;  // range [0,hd]
+  int j = index-i*hd;  // range [0,hd]
   int nx = fnx-2*hd; // actual size.
   int ny = fny-2*hd;
   int stridexy = hd*hd;
@@ -233,7 +262,7 @@ distribute(float* ps, float* ph, float* U, float* dpsi, float* ph2, BC_buffs BC,
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int hd = cP.ha_wd;
   int i = index/hd;  // range [0,max]
-  int j = index-j*hd;  // range [0,hd]
+  int j = index-i*hd;  // range [0,hd]
   int nx = fnx-2*hd; // actual size.
   int ny = fny-2*hd;
   int stridexy = hd*hd;
@@ -278,7 +307,7 @@ distribute(float* ps, float* ph, float* U, float* dpsi, float* ph2, BC_buffs BC,
 
 
 __global__ void
-XYT_lin_interp(float* x, float* y, float t, float* X, float* Y, float* T, float u_3d[Nx][Ny][Nt], float* u_m, int fnx, int fny){
+XYT_lin_interp(float* x, float* y, float t, float* X, float* Y, float* T, float* u_3d, float* u_m, int Nx, int Ny, int Nt, int fnx, int fny){
 
    int C = blockIdx.x * blockDim.x + threadIdx.x;
    int j=C/fnx;
@@ -298,10 +327,12 @@ XYT_lin_interp(float* x, float* y, float t, float* X, float* Y, float* T, float 
       int ky = (int) (( y[j] - Y[0] )/Dy);
       float delta_y = ( y[j] - Y[0] )/Dy - ky;  
       
-      u_m[C] = ( (1.0f-delta_x)*(1.0f-delta_y)*u_3d[kx][ky][kt] + (1.0f-delta_x)*delta_y*u_3d[kx][ky+1][kt] \
-               +delta_x*(1.0f-delta_y)*u_3d[kx+1][ky][kt] +   delta_x*delta_y*u_3d[kx+1][ky+1][kt] )*(1.0f-delta_t) + \
-             ( (1.0f-delta_x)*(1.0f-delta_y)*u_3d[kx][ky][kt+1] + (1.0f-delta_x)*delta_y*u_3d[kx][ky+1][kt+1] \
-               +delta_x*(1.0f-delta_y)*u_3d[kx+1][ky][kt+1] +   delta_x*delta_y*u_3d[kx+1][ky+1][kt+1] )*delta_t    
+      int offset = kx + ky*Nx + kt*Nx*Ny;
+      int offset_n = kx + ky*Nx + (kt+1)*Nx*Ny
+      u_m[C] = ( (1.0f-delta_x)*(1.0f-delta_y)*u_3d[ offset ] + (1.0f-delta_x)*delta_y*u_3d[ offset+Nx ] \
+               +delta_x*(1.0f-delta_y)*u_3d[ offset+1 ] +   delta_x*delta_y*u_3d[ offset+Nx+1 ] )*(1.0f-delta_t) + \
+             ( (1.0f-delta_x)*(1.0f-delta_y)*u_3d[ offset_n ] + (1.0f-delta_x)*delta_y*u_3d[ offset_n+Nx ] \
+               +delta_x*(1.0f-delta_y)*u_3d[ offset_n+1 ] +   delta_x*delta_y*u_3d[ offset_n+Nx+1 ] )*delta_t;    
    
    
    }
@@ -467,7 +498,7 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         #
         # =============================================================*/
 
-        float Up = //(y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
+        float Up = (T_m[C]-cP.Ti)/(cP.c_infm/cP.k)/(1.0-cP.k);  //(y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
 
         float rhs_psi = ((JR-JL) + (JT-JB) + extra) * cP.hi*cP.hi + \
                    cP.sqrt2*ph[C] - cP.lamd*(1.0f-ph[C]*ph[C])*cP.sqrt2*(U[C] + Up);
@@ -618,11 +649,13 @@ void allocate_mpi_buffs(GlobalConstants params, BC_buffs DNS, int fnx, int fny){
 
 
 
-void exchange_BC(BC_buffs BC, GlobalConstants params, int fnx, int fny, int nt, int rank, int px, int py, int nprocx, int nprocy){
+void exchange_BC(MPI_Comm comm, BC_buffs BC, GlobalConstants params, int fnx, int fny, int nt, int rank, int px, int py, int nprocx, int nprocy){
 
     int ntag = 8*nt;
-    int hd = params.ha_wd;
     int num_fields = 5;
+    int hd = params.ha_wd;
+    int nx = fnx-2*hd;
+    int ny = fny-2*hd;
     int Lx = num_fields*hd*nx;
     int Ly = num_fields*hd*ny;
     int Lxy = num_fields*hd*hd;
@@ -654,17 +687,17 @@ void exchange_BC(BC_buffs BC, GlobalConstants params, int fnx, int fny, int nt, 
           {MPI_Recv(BC.recvLB, Lxy, MPI_FLOAT, rank-1-nprocx, ntag+5, comm, MPI_STATUS_IGNORE);}
     if ( px > 0 and py > 0)
           {MPI_Send(BC.sendLB, Lxy, MPI_FLOAT, rank-1-nprocx, ntag+6, comm);}
-    if ( px < nprocx-1 and py < nprocy-1 ):
+    if ( px < nprocx-1 and py < nprocy-1 )
           {MPI_Recv(BC.recvRT, Lxy, MPI_FLOAT, rank+1+nprocx, ntag+6, comm, MPI_STATUS_IGNORE);}
 
 
-    if ( py < nprocy-1 and px > 0 ):
+    if ( py < nprocy-1 and px > 0 )
           {MPI_Send(BC.sendLT, Lxy, MPI_FLOAT, rank+nprocx-1, ntag+7, comm);}
-    if ( py>0 and px < nprocx-1 ):
+    if ( py>0 and px < nprocx-1 )
           {MPI_Recv(BC.recvRB, Lxy, MPI_FLOAT, rank-nprocx+1, ntag+7, comm, MPI_STATUS_IGNORE);}
-    if ( py>0 and px < nprocx-1):
+    if ( py>0 and px < nprocx-1)
           {MPI_Send(BC.sendRB, Lxy, MPI_FLOAT, rank-nprocx+1, ntag+8, comm);}
-    if ( py < nprocy -1 and px > 0):
+    if ( py < nprocy -1 and px > 0)
           {MPI_Recv(BC.recvLT, Lxy, MPI_FLOAT, rank+nprocx-1, ntag+8, comm, MPI_STATUS_IGNORE);}
 
 }
@@ -673,13 +706,15 @@ void exchange_BC(BC_buffs BC, GlobalConstants params, int fnx, int fny, int nt, 
 
 
 
-
-
-
-void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U){
+void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U){
   // we should have already pass all the data structure in by this time
   // move those data onto device
-  printCudaInfo();
+  int num_gpus_per_node = 4;
+  int device_id_innode = pM.rank % num_gpus_per_node;
+    //gpu_name = cuda.select_device( )
+  cudaSetDevice(pM.rank, device_id_innode); 
+  printCudaInfo(device_id_innode);
+  
   float* x_device;// = NULL;
   float* y_device;// = NULL;
 
@@ -713,7 +748,23 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
   cudaMemcpy(U_old, U, sizeof(float) * length, cudaMemcpyHostToDevice);
 
   // pass all the read-only params into global constant
-  cudaMemcpyToSymbol(cP, &params, sizeof(GlobalConstants));
+  cudaMemcpyToSymbol(cP, &params, sizeof(GlobalConstants) );
+
+
+
+
+//---for interp
+
+  Mac_input Mgpu;
+  cudaMalloc((void **)&Mgpu.X_mac,  sizeof(float) * mac.Nx);
+  cudaMalloc((void **)&Mgpu.Y_mac,  sizeof(float) * mac.Ny);
+  cudaMalloc((void **)&Mgpu.t_mac,    sizeof(float) * mac.Nt);
+  cudaMalloc((void **)&Mgpu.T_3D,    sizeof(float) * mac.Nx*mac.Ny*mac.Nt);
+  cudaMemcpy(Mgpu.X_mac, mac.X_mac, sizeof(float) * Nx, cudaMemcpyHostToDevice);  
+  cudaMemcpy(Mgpu.Y_mac, mac.Y_mac, sizeof(float) * Ny, cudaMemcpyHostToDevice); 
+  cudaMemcpy(Mgpu.t_mac, mac.t_mac, sizeof(float) * Nt, cudaMemcpyHostToDevice);  
+  cudaMemcpy(Mgpu.T_3D, mac.T_3D, sizeof(float) * Nt* Nx* Ny, cudaMemcpyHostToDevice);   
+//--
 
    int blocksize_1d = 128;
    int blocksize_2d = 128;  // seems reduce the block size makes it a little faster, but around 128 is okay.
@@ -728,8 +779,9 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
    for (int kt=0; kt<params.Mt/2; kt++){
    //  printf("time step %d\n",kt);
      float t_cur_step = 2*kt*params.dt*params.tau0;
-     XYT_lin_interp<<< num_block_2d, blocksize_2d >>>(x_device, y_device, t_cur_step, X_gpu, Y_gpu, mac_t_gpu, T_3D_gpu, T_m);
-     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt );
+     XYT_lin_interp<<< num_block_2d, blocksize_2d >>>(x_device, y_device, t_cur_step,\
+      Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, T_m, Mgpu.Nx, Mgpu.Ny, Mgpu.Nt, fnx, fny);
+     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt, T_m );
      //cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
      //cudaDeviceSynchronize();
@@ -737,8 +789,9 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
 
      //cudaDeviceSynchronize();
      t_cur_step = (2*kt+1)*params.dt*params.tau0;
-     XYT_lin_interp<<< num_block_2d, blocksize_2d >>>(x_device, y_device, t_cur_step, X_gpu, Y_gpu, mac_t_gpu, T_3D_gpu, T_m);
-     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1 );
+     XYT_lin_interp<<< num_block_2d, blocksize_2d >>>(x_device, y_device, t_cur_step,\
+      Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, T_m, Mgpu.Nx, Mgpu.Ny, Mgpu.Nt, fnx, fny);
+     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1, T_m );
      //cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
      //cudaDeviceSynchronize();
@@ -756,7 +809,7 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
   cudaFree(psi_old); cudaFree(psi_new);
   cudaFree(phi_old); cudaFree(phi_new);
   cudaFree(U_old); cudaFree(U_new);
-  cudaFree(dpsi);  cudaFree(T_m)
+  cudaFree(dpsi);  cudaFree(T_m);
 
 
 }
@@ -764,41 +817,10 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
 
 
 
-/*
-void time_marching(GlobalConstants params, int fnx, int fny){
-
-   // initialize or load
-
-   int blocksize_1d = 256;
-   int blocksize_2d = 512;
-   int num_block_2d = (fnx*fny+blocksize_2d-1)/blocksize_2d;
-   int num_block_1d = (fnx+fny+blocksize_1d-1)/blocksize_1d;
-
-   initialize<<< num_block_2d, blocksize_2d >>>(ps_old, ph_old, U_old, ps_new, ph_new, U_new, x_device, y_device, fnx, fny);
-   
-
-   for (int kt=0; kt<params.Mt/2; kt++){
-
-     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt ); 
-     set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
-     rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi);
-
-
-     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1 ); 
-     set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
-     rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi);
-
-
-   }
-
-   
- 
-}*/
 
 
 
-
-void printCudaInfo()
+void printCudaInfo(int rank, int i)
 {
     // for fun, just print out some stats on the machine
 
@@ -808,15 +830,14 @@ void printCudaInfo()
     printf("---------------------------------------------------------\n");
     printf("Found %d CUDA devices\n", deviceCount);
 
-    for (int i=0; i<deviceCount; i++)
-    {
+
         cudaDeviceProp deviceProps;
         cudaGetDeviceProperties(&deviceProps, i);
-        printf("Device %d: %s\n", i, deviceProps.name);
+        printf("rank %d, Device %d: %s\n", rank, i, deviceProps.name);
         printf("   SMs:        %d\n", deviceProps.multiProcessorCount);
         printf("   Global mem: %.0f MB\n",
                static_cast<float>(deviceProps.totalGlobalMem) / (1024 * 1024));
         printf("   CUDA Cap:   %d.%d\n", deviceProps.major, deviceProps.minor);
-    }
+
     printf("---------------------------------------------------------\n"); 
 }
