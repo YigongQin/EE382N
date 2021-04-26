@@ -5,14 +5,12 @@
 #include <cstring>
 #include <map>
 #include<functional>
-
+#include<mpi.h>
 #include "CycleTimer.h"
-#include <mpi.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <cmath>
-#include "/home1/apps/matlab/2020b/extern/include/mat.h"
 // #include <mat.h> 
 using namespace std;
 
@@ -122,6 +120,7 @@ void getParam(std::string lineText, std::string key, float& param){
     }
 }
 
+/*
 void matread(std::string matfile, std::string key, std::vector<double>& v)
 {
     // open MAT-file
@@ -144,7 +143,7 @@ void matread(std::string matfile, std::string key, std::vector<double>& v)
     mxDestroyArray(arr);
     matClose(pmat);
 }
-
+*/
 
 
 int main(int argc, char** argv)
@@ -180,7 +179,6 @@ int main(int argc, char** argv)
 
     char* fileName=argv[1];
     std::string lineText;
-    std::string matfile=argv[2];
 
     std::ifstream parseFile(fileName);
     float nx;
@@ -294,8 +292,8 @@ int main(int argc, char** argv)
     
     //==============================
     // parameters depend on MPI
-    pM.nx_loc = params.nx;
-    pM.ny_loc = params.ny;
+    pM.nx_loc = params.nx/pM.nprocx;
+    pM.ny_loc = params.ny/pM.nprocy;
     
     float len_blockx = params.lxd/pM.nprocx;
     float len_blocky = params.lyd/pM.nprocy;
@@ -316,28 +314,29 @@ int main(int argc, char** argv)
 
 
     for(int i=0; i<length_x; i++){
-        x[i]=(i-params.ha_wd)*params.lxd/params.nx; 
+        x[i]=(i-params.ha_wd)*params.lxd/params.nx + xmin_loc; 
     }
 
     for(int i=0; i<length_y; i++){
-        y[i]=(i-params.ha_wd)*params.lyd/params.ny;
+        y[i]=(i-params.ha_wd)*params.lyd/params.ny + ymin_loc;
     }
 
 
 
 //===================================
 
-    std::cout<<"x= ";
-    for(int i=0; i<length_x; i++){
-        std::cout<<x[i]<<" ";
-    }
-    std::cout<<std::endl;
+  //  std::cout<<"x= ";
+  //  for(int i=0; i<length_x; i++){
+  //      std::cout<<x[i]<<" ";
+  //  }
+    std::cout<< "rank "<< pM.rank<< " xmin " << x[0] <<" xmax "<<x[length_x-1]<<std::endl;
 
-    std::cout<<"y= ";
-    for(int i=0; i<length_y; i++){
-        std::cout<<y[i]<<" ";
-    }
-    std::cout<<std::endl;
+   // std::cout<<"y= ";
+   // for(int i=0; i<length_y; i++){
+    //    std::cout<<y[i]<<" ";
+  //  }
+//    std::cout<<std::endl;
+        std::cout<< "rank "<< pM.rank<< " ymin "<< y[0] << " ymax "<<y[length_y-1]<<std::endl;
 
     int length=length_x*length_y;
     std::cout<<"x length of psi, phi, U="<<length_x<<std::endl;
@@ -362,17 +361,20 @@ int main(int argc, char** argv)
 
     // step1 plus: read mat file from macrodata
 
-    std::vector<double> v;
+/*    std::vector<double> v;
     matread(matfile, "x",v);
     for (std::size_t i=0; i<v.size(); ++i)
         {std::cout << v[i] << std::endl;}
 
+*/
+
+    Mac_input mac;
+    mac.Nx = 11;
+    mac.Ny = 41;
+    mac.Nt = 11;
 
 
-
-
-
-    //setup(comm, pM, params, length_x, length_y, x, y, phi, psi, Uc);
+    setup(comm, pM, params, mac, length_x, length_y, x, y, phi, psi, Uc);
 
     //std::cout<<"y= ";
     //for(int i=0+length_y; i<2*length_y; i++){
@@ -380,22 +382,8 @@ int main(int argc, char** argv)
     //}
     //std::cout<<std::endl;
     // step 3 (time marching): call the kernels Mt times
-    double* phi_arr= new double[length];
-    for(int i=0; i<length; i++){
-         phi_arr[i] = (double) phi[i];
-    } 
-    // // step 4: save the psi, phi, U to a .mat file
-    MATFile *pmatFile = NULL;
-    mxArray *pMxArray = NULL;
-    pmatFile = matOpen("MPI_data.mat","w");
-    pMxArray = mxCreateDoubleMatrix(length_x, length_y, mxREAL);
-    mxSetData(pMxArray, phi_arr);
-    matPutVariable(pmatFile, "phi", pMxArray);
-    //mxSetData(pMxArray, phi);
-    //matPutVariable(pmatFile, "phi", pMxArray);
-    //mxSetData(pMxArray, U);
-    //matPutVariable(pmatFile, "U", pMxArray);
-    matClose(pmatFile);
+
+    MPI_Finalize();
     delete[] phi;
     delete[] Uc;
     delete[] psi;

@@ -51,4 +51,9 @@ Created on Fri May 29 11:10:53 2020
     ictype = 0                   	# initial condtion: 0 for semi-circular, 1 for planar interface, 2 for sum of sines
     filename = 'phase_field.mat'
     direc = './'                        # saving directory
+    
+    ha_wd = 1;
+    xmin = 0
+    ymin = 0
+    Ti = 931.2
 
