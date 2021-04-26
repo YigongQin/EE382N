@@ -728,7 +728,7 @@ CudaRenderer::render() {
     cudaMemcpy(screenMaxY, screenMaxY_device, (numCircles)*sizeof(int), cudaMemcpyDeviceToHost);
     //printf("executed here 1\n");
     if(sceneName==CIRCLE_TEST_10K || sceneName==CIRCLE_TEST_100K){
-        int streamNum=16;
+        int streamNum=8;
         cudaStream_t stream[streamNum];
         for (int i=0; i <streamNum; i++){
         cudaStreamCreate(&stream[i]);
@@ -748,6 +748,8 @@ CudaRenderer::render() {
                         overlap = true;
                         //printf("%d overlap %d\n", circleIndex, pairIndex);
                         continue;
+                        //cudaStreamSynchronize(stream[pairIndex%streamNum]);
+                        
                     }
             }
             double time_loop_end = CycleTimer::currentSeconds();
@@ -756,9 +758,13 @@ CudaRenderer::render() {
                 mileStone=circleIndex;
                 cudaDeviceSynchronize();
             }
+            // if(circleIndex==(mileStone+distance)){
+            //     mileStone=circleIndex;
+            //     cudaDeviceSynchronize();
+            // }
             kernelRenderSingleCircle<<<gridDim, blockDim, 0, stream[streamIdx]>>>(circleIndex, screenMinX[circleIndex], screenMaxX[circleIndex], screenMinY[circleIndex], screenMaxY[circleIndex]);
             streamIdx++;
-            if(streamIdx==8){
+            if(streamIdx==streamNum){
                 streamIdx=0;
             }
             overlap=false;
