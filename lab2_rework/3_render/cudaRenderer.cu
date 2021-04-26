@@ -727,23 +727,68 @@ CudaRenderer::render() {
     cudaMemcpy(screenMinY, screenMinY_device, (numCircles)*sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(screenMaxY, screenMaxY_device, (numCircles)*sizeof(int), cudaMemcpyDeviceToHost);
     //printf("executed here 1\n");
-    // cudaStream_t stream[numCircles];
-    // for (int i=0; i <numCircles; i++){
-    //   cudaStreamCreate(&stream[i]);
-    // }
-    double time3 = CycleTimer::currentSeconds();
-    for(int circleIndex=0; circleIndex<numCircles; circleIndex++){
-        //printf("executed here 2\n");
-        dim3 gridDim(((screenMaxX[circleIndex]-screenMinX[circleIndex])*(screenMaxY[circleIndex]-screenMinY[circleIndex]) + blockDim.x - 1) / blockDim.x);
-        kernelRenderSingleCircle<<<gridDim, blockDim>>>(circleIndex, screenMinX[circleIndex], screenMaxX[circleIndex], screenMinY[circleIndex], screenMaxY[circleIndex]);
-        // cudaError_t errCode = cudaPeekAtLastError();
-        // if (errCode != cudaSuccess) {
-        //     fprintf(stderr, "WARNING: A CUDA error occured: code=%d, %s\n", errCode, cudaGetErrorString(errCode));
-        // }
-        //cudaDeviceSynchronize();
-        //printf("executed here 3\n");
+    if(sceneName==CIRCLE_TEST_10K || sceneName==CIRCLE_TEST_100K){
+        int streamNum=16;
+        cudaStream_t stream[streamNum];
+        for (int i=0; i <streamNum; i++){
+        cudaStreamCreate(&stream[i]);
+        }
+        double time3 = CycleTimer::currentSeconds();
+        double time_loop_total=0;
+        int streamIdx=0;
+        int mileStone =0;
+        int distance=1000;
+        bool overlap=false;
+        for(int circleIndex=0; circleIndex<numCircles; circleIndex++){
+            dim3 gridDim(((screenMaxX[circleIndex]-screenMinX[circleIndex])*(screenMaxY[circleIndex]-screenMinY[circleIndex]) + blockDim.x - 1) / blockDim.x);
+            double time_loop_start = CycleTimer::currentSeconds();
+            for(int pairIndex=mileStone; pairIndex<circleIndex; pairIndex++){
+                if(screenMinX[circleIndex]<=screenMaxX[pairIndex] && screenMaxX[circleIndex]>=screenMinX[pairIndex]
+                    &&screenMinY[circleIndex]<=screenMaxY[pairIndex] && screenMaxY[circleIndex]>=screenMinY[pairIndex]){
+                        overlap = true;
+                        //printf("%d overlap %d\n", circleIndex, pairIndex);
+                        continue;
+                    }
+            }
+            double time_loop_end = CycleTimer::currentSeconds();
+            time_loop_total=time_loop_total+time_loop_end-time_loop_start;
+            if(overlap||circleIndex==(mileStone+distance)){
+                mileStone=circleIndex;
+                cudaDeviceSynchronize();
+            }
+            kernelRenderSingleCircle<<<gridDim, blockDim, 0, stream[streamIdx]>>>(circleIndex, screenMinX[circleIndex], screenMaxX[circleIndex], screenMinY[circleIndex], screenMaxY[circleIndex]);
+            streamIdx++;
+            if(streamIdx==8){
+                streamIdx=0;
+            }
+            overlap=false;
+            // cudaError_t errCode = cudaPeekAtLastError();
+            // if (errCode != cudaSuccess) {
+            //     fprintf(stderr, "WARNING: A CUDA error occured: code=%d, %s\n", errCode, cudaGetErrorString(errCode));
+            // }
+            //cudaDeviceSynchronize();
+            //printf("executed here 3\n");
+            
+        }
+        cudaDeviceSynchronize();
+        double time4 = CycleTimer::currentSeconds();
+        printf("time:\n    getBounds: %f\n    device to host: %f\n    iterate over circles: %f\n    check overlap: %f\n", time2-time1, time3-time2, time4-time3, time_loop_total);
     }
-    cudaDeviceSynchronize();
-    double time4 = CycleTimer::currentSeconds();
-    printf("time: %f, %f, %f\n", time2-time1, time3-time2, time4-time3);
+    else{
+        double time3 = CycleTimer::currentSeconds();
+        for(int circleIndex=0; circleIndex<numCircles; circleIndex++){
+            //printf("executed here 2\n");
+            dim3 gridDim(((screenMaxX[circleIndex]-screenMinX[circleIndex])*(screenMaxY[circleIndex]-screenMinY[circleIndex]) + blockDim.x - 1) / blockDim.x);
+            kernelRenderSingleCircle<<<gridDim, blockDim>>>(circleIndex, screenMinX[circleIndex], screenMaxX[circleIndex], screenMinY[circleIndex], screenMaxY[circleIndex]);
+            // cudaError_t errCode = cudaPeekAtLastError();
+            // if (errCode != cudaSuccess) {
+            //     fprintf(stderr, "WARNING: A CUDA error occured: code=%d, %s\n", errCode, cudaGetErrorString(errCode));
+            // }
+            //cudaDeviceSynchronize();
+            //printf("executed here 3\n");
+        }
+        cudaDeviceSynchronize();
+        double time4 = CycleTimer::currentSeconds();
+        printf("time:\n    getBounds:%f\n    device to host: %f\n    iterate over circles: %f\n", time2-time1, time3-time2, time4-time3);
+    }
 }
