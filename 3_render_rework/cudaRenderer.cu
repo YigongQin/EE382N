@@ -742,9 +742,9 @@ __global__ void findCircsInBlock(array_type* circ_cover_flag, int num_total_bloc
     int blockId_dimY = blockId / num_blockx;
 
     short blockMinX = BLOCK_DIM_X * blockId_dimX;
-    short blockMaxX = BLOCK_DIM_X * (blockId_dimX + 1) - 1;
+    short blockMaxX = BLOCK_DIM_X * (blockId_dimX + 1);
     short blockMinY = BLOCK_DIM_Y * blockId_dimY;
-    short blockMaxY = BLOCK_DIM_Y * (blockId_dimY + 1) - 1;  
+    short blockMaxY = BLOCK_DIM_Y * (blockId_dimY + 1);  
 
     float blockL = blockMinX * invWidth;
     float blockR = blockMaxX * invWidth;
@@ -910,8 +910,8 @@ void
 CudaRenderer::render() {
 
     // 256 threads per block is a healthy number
-    dim3 blockDim(256, 1);
-    dim3 gridDim((numCircles + blockDim.x - 1) / blockDim.x);
+//    dim3 blockDim(256, 1);
+//    dim3 gridDim((numCircles + blockDim.x - 1) / blockDim.x);
 
     //debug_set1();
     //debug_set2();
@@ -927,12 +927,12 @@ CudaRenderer::render() {
     int num_blockx = (image->width+block_dimx-1)/block_dimx;
     int num_blocky = (image->height+block_dimy-1)/block_dimy;    
     int num_total_blocks = num_blockx*num_blocky;
-    printf("%d\n",num_total_blocks);
+  //  printf("%d\n",num_total_blocks);
     long total_size = numCircles*num_total_blocks;
     long total_size_rd = num_circ_rd*num_total_blocks;
-    int* check_ids = new int[total_size];
-    int* check_sps = new int[num_total_blocks];
-    int* check_flags = new int[total_size_rd];
+    //int* check_ids = new int[total_size];
+    //int* check_sps = new int[num_total_blocks];
+    //int* check_flags = new int[total_size_rd];
     // long total_size = numCircles;
     //int* circ_loca_ids; // concatenation of num_total_blocks variable-size arrays
     // size of this array is not determined yet, should be gotten from scan
@@ -942,15 +942,18 @@ CudaRenderer::render() {
     int block_size_1d = 512; // can ajust
     int num_block_1d = (total_size_rd+block_size_1d-1)/block_size_1d;
     
+    double time0 = CycleTimer::currentSeconds();
     cudaMalloc((void **)&circ_cover_flag, sizeof(array_type) * total_size_rd);
-    cudaMemset(circ_cover_flag, 0, sizeof(array_type) * total_size_rd); // set to 0 to prevent error
+ //   cudaMemset(circ_cover_flag, 0, sizeof(array_type) * total_size_rd); // set to 0 to prevent error
 
     cudaMalloc((void **)&circ_cover_id, sizeof(int) * total_size);
     cudaMalloc((void **)&separators, sizeof(int) * num_total_blocks);
     //cudaMemset(circ_cover_id, -1, sizeof(int) * total_size);    
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
 
     double time1 = CycleTimer::currentSeconds();
+    printf("step 0 %f s\n",time1-time0);
+
     //step1: give status  0/1 to the circ_cover_flag based on coverage
     findCircsInBlock<<<num_block_1d,block_size_1d>>> (circ_cover_flag, num_total_blocks, num_blockx, num_blocky);
     //cudaDeviceSynchronize();
@@ -988,11 +991,12 @@ CudaRenderer::render() {
     printf("step 2(2) %f s\n",time4-time3);
     //right now, the last 
     //cudaDeviceSynchronize();
- 
-    /*
-    cudaMemcpy(check_flags, circ_cover_flag, total_size_rd * sizeof(int),cudaMemcpyDeviceToHost);
-    for (int i = 0; i < 2*num_total_blocks; i++){
+/*    printf("the circles %d\n",numCircles); 
+    
+    cudaMemcpy(check_flags, circ_cover_flag, total_size_rd * sizeof(array_type),cudaMemcpyDeviceToHost);
+    for (int i = 0; i < 1*num_total_blocks; i++){
        if (i%num_blockx==0) {printf("\n");}
+        if (i%num_total_blocks==0) {printf("\n");}
        printf("%d ",  check_flags[i]);
     }
     printf("\n");
@@ -1000,7 +1004,7 @@ CudaRenderer::render() {
     cudaMemcpy(check_ids, circ_cover_id, total_size * sizeof(int),cudaMemcpyDeviceToHost);
     for (int i = 1; i < total_size; i+=numCircles){
        if ((i-1)%num_blockx==0) {printf("\n");}
-        printf("%3d ", check_ids[i]);
+        printf("%d ", check_ids[i]);
     }
         printf("\n");
     printf("\n"); 
@@ -1010,22 +1014,30 @@ CudaRenderer::render() {
        printf("%d ",  check_sps[i]);
     }
     printf("\n"); 
-   */
+    for (int i=0;i<num_total_blocks;i++){
+        int sp_cont= 0;
+        for (int j=0;j<numCircles;j++){
+           if( check_ids[i*numCircles+j]!=-1){sp_cont+=1;}}
+         if (check_sps[i]!=sp_cont){printf("find diff in block %d, checkid %d, the conunt %d\n",i, check_sps[i], sp_cont);}
+   
+   }  
+
+ */
     //step3: use the separators and circ_cover_id to render the circle
     // define dim for block
     dim3 blockDimBlock(block_dimx, block_dimy);
     dim3 gridDimBlock(num_blockx, num_blocky);
 
     kernelRenderCircles<<<gridDimBlock, blockDimBlock>>>(separators, circ_cover_id, num_blockx, num_blocky, numCircles);
-    cudaDeviceSynchronize();
+//    cudaDeviceSynchronize();
     double time5 = CycleTimer::currentSeconds();  
     printf("step 3 %f s \n",time5-time4);  
     //step4: small size
 
 //-------
     
-    cudaFree(circ_cover_flag);
-    cudaFree(circ_cover_id);
-    cudaFree(separators);
+//    cudaFree(circ_cover_flag);
+//    cudaFree(circ_cover_id);
+//    cudaFree(separators);
     
 }
