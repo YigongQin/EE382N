@@ -408,7 +408,7 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
   cudaMemcpy(U_old, U, sizeof(float) * length, cudaMemcpyHostToDevice);
 
   // pass all the read-only params into global constant
-  cudaMemcpyToSymbol(cP, &params, sizeof(GlobalConstants));
+  cudaMemcpyToSymbol(cP, &params, sizeof(GlobalConstants), cudaMemcpyHostToDevice);
 
    int blocksize_1d = 128;
    int blocksize_2d = 128;  // seems reduce the block size makes it a little faster, but around 128 is okay.

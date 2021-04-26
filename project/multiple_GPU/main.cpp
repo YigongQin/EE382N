@@ -7,7 +7,7 @@
 #include<functional>
 
 #include "CycleTimer.h"
-
+#include <mpi.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -17,7 +17,6 @@
 using namespace std;
 
 
-void printCudaInfo();
 
 struct GlobalConstants {
   int nx;
@@ -59,10 +58,30 @@ struct GlobalConstants {
   float epsilon;
   float a_12;
 
+  float Ti;
   int ha_wd;
+  int Mnx;
+  int Mny;
+  int Mnt;
+  float xmin;
+  float ymin;
+  
 };
 
-void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
+struct params_MPI{
+
+    int rank;
+    int px;
+    int py;
+    int nproc;
+    int nprocx;
+    int nprocy;
+    int nx_loc;
+    int ny_loc;
+};
+
+
+void setup(MPI_Comm comm, params_MPI pM, GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
 
 
 // add function for easy retrieving params
@@ -92,6 +111,31 @@ void getParam(std::string lineText, std::string key, float& param){
     }
 }
 
+void matread(std::string matfile, std::string key, std::vector<double>& v)
+{
+    // open MAT-file
+    MATFile *pmat = matOpen(matfile, "r");
+    if (pmat == NULL) return;
+
+    // extract the specified variable
+    mxArray *arr = matGetVariable(pmat, key);
+    if (arr != NULL && mxIsDouble(arr) && !mxIsEmpty(arr)) {
+        // copy data
+        mwSize num = mxGetNumberOfElements(arr);
+        double *pr = mxGetPr(arr);
+        if (pr != NULL) {
+            v.reserve(num); //is faster than resize :-)
+            v.assign(pr, pr+num);
+        }
+    }
+
+    // cleanup
+    mxDestroyArray(arr);
+    matClose(pmat);
+}
+
+
+
 int main(int argc, char** argv)
 {
     // All the variables should be float (except for nx, ny, Mt, nts, ictype, which should be integer)
@@ -99,14 +143,40 @@ int main(int argc, char** argv)
     // step 1 (input): read or calculate  parameters from "input"
     // and print out information: lxd, nx, ny, Mt
     // Create a text string, which is used to output the text file
+    params_MPI pM;
+
+    MPI_Comm comm = MPI_COMM_WORLD;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(comm, &pM.rank);
+    MPI_Comm_size(comm, &pM.nproc);
+
+
+     
+    //if rank == 0: print('GPUs on this node', cuda.gpus)
+    //printf('device id',gpu_name,'host id',rank );
+
+    pM.nprocx = (int) ceil(sqrt(pM.nproc));
+    pM.nprocy = (int) ceil(pM.nproc/pM.nprocx);
+
+
+    pM.px = pM.rank%pM.nprocx;           //# x id of current processor   [0:nprocx]
+    pM.py = pM.rank/pM.nprocx; //# y id of current processor  [0:nprocy]
+    printf("px, %d, py, %d, for rank %d \n",pM.px, pM.py, pM.rank);
+
+    if (pM.rank ==0){ printf("total/x/y processors %d, %d, %d\n", pM.nproc, pM.nprocx, pM.nprocy);}
+
+
+
     char* fileName=argv[1];
     std::string lineText;
+    std::string matfile=argv[2];
 
     std::ifstream parseFile(fileName);
     float nx;
     float Mt;
     float nts;
     float ictype;
+    float ha_wd;
     GlobalConstants params;
     while (parseFile.good()){
         std::getline (parseFile, lineText);
@@ -134,6 +204,13 @@ int main(int argc, char** argv)
         params.nts = (int)nts;
         getParam(lineText, "ictype", ictype);
         params.ictype = (int)ictype;
+
+        // new multiple
+        getParam(lineText, "ha_wd", ha_wd);
+        params.ha_wd = (int)ha_wd;
+        getParam(lineText, "xmin", params.xmin);
+        getParam(lineText, "ymin", params.ymin);
+        
     }
     
 
@@ -158,7 +235,8 @@ int main(int argc, char** argv)
     params.a_s = 1 - 3.0*params.delta;
     params.epsilon = 4.0*params.delta/params.a_s;
     params.a_12 = 4.0*params.a_s*params.epsilon;
-    
+   
+    if (pM.rank==0){ 
     std::cout<<"G = "<<params.G<<std::endl;
     std::cout<<"R = "<<params.R<<std::endl;
     std::cout<<"delta = "<<params.delta<<std::endl;
@@ -188,42 +266,71 @@ int main(int argc, char** argv)
     std::cout<<"ny = "<<params.ny<<std::endl;
     std::cout<<"lxd = "<<params.lxd<<std::endl;
     std::cout<<"lyd = "<<params.lyd<<std::endl;
-    
+
+    }
+    // step1 plus: read mat file from macrodata
+    //
+    //
+ 
     // step 2 (setup): pass the parameters to constant memory and 
     // allocate and initialize 1_D arrays on CPU/GPU  x: size nx+1, range [0,lxd], y: size ny+1, range [0, lyd]
     // you should get dx = dy = lxd/nx = lyd/ny
 
     // allocate 1_D arrays on CPU: psi, phi, U of size (nx+3)*(ny+3) -- these are for I/O
     // x and y would be allocate to the shared memory?
+
     
-    int length_x = params.nx+3;
-    int length_y = params.ny+3;
+    
+    //==============================
+    // parameters depend on MPI
+    pM.nx_loc = params.nx;
+    pM.ny_loc = params.ny;
+    
+    float len_blockx = params.lxd/pM.nprocx;
+    float len_blocky = params.lyd/pM.nprocy;
+    
+    float xmin_loc = params.xmin+ pM.px*len_blockx; 
+    float ymin_loc = params.ymin+ pM.py*len_blocky; 
+
+    if (pM.px==0){pM.nx_loc+=1;}
+    else{xmin_loc+=params.lxd/params.nx;}
+    
+    if (pM.py==0){pM.ny_loc+=1;}
+    else{ymin_loc+=params.lyd/params.ny;}
+
+    int length_x = pM.nx_loc+2*params.ha_wd;
+    int length_y = pM.ny_loc+2*params.ha_wd;
     float* x=(float*) malloc(length_x* sizeof(float));
     float* y=(float*) malloc(length_y* sizeof(float));
 
 
     for(int i=0; i<length_x; i++){
-        x[i]=(i-1)*params.lxd/params.nx; 
+        x[i]=(i-params.ha_wd)*params.lxd/params.nx; 
     }
 
-    //std::cout<<"x= ";
-    //for(int i=0; i<length_x; i++){
-    //    std::cout<<x[i]<<" ";
-   // }
-    //std::cout<<std::endl;
-
-    // y
     for(int i=0; i<length_y; i++){
-        y[i]=(i-1)*params.lyd/params.ny; 
+        y[i]=(i-params.ha_wd)*params.lyd/params.ny;
     }
 
-    //std::cout<<"y= ";
-    //for(int i=0; i<length_y; i++){
-    //    std::cout<<y[i]<<" ";
-    //}
-    //std::cout<<std::endl;
+
+
+//===================================
+
+    std::cout<<"x= ";
+    for(int i=0; i<length_x; i++){
+        std::cout<<x[i]<<" ";
+    }
+    std::cout<<std::endl;
+
+    std::cout<<"y= ";
+    for(int i=0; i<length_y; i++){
+        std::cout<<y[i]<<" ";
+    }
+    std::cout<<std::endl;
 
     int length=length_x*length_y;
+    std::cout<<"x length of psi, phi, U="<<length_x<<std::endl;
+    std::cout<<"y length of psi, phi, U="<<length_y<<std::endl;
     std::cout<<"length of psi, phi, U="<<length<<std::endl;
     float* psi=(float*) malloc(length* sizeof(float));
     float* phi=(float*) malloc(length* sizeof(float));
@@ -242,14 +349,19 @@ int main(int argc, char** argv)
 
 
 
-    // other things to add, first temperature field read mat file
+    // step1 plus: read mat file from macrodata
+
+    std::vector<double> v;
+    matread(matfile, "x",v);
+    for (std::size_t i=0; i<v.size(); ++i)
+        {std::cout << v[i] << std::endl;}
 
 
 
 
 
 
-    setup(params, length_x, length_y, x, y, phi, psi, Uc);
+    //setup(comm, pM, params, length_x, length_y, x, y, phi, psi, Uc);
 
     //std::cout<<"y= ";
     //for(int i=0+length_y; i<2*length_y; i++){
@@ -264,7 +376,7 @@ int main(int argc, char** argv)
     // // step 4: save the psi, phi, U to a .mat file
     MATFile *pmatFile = NULL;
     mxArray *pMxArray = NULL;
-    pmatFile = matOpen("out.mat","w");
+    pmatFile = matOpen("MPI_data.mat","w");
     pMxArray = mxCreateDoubleMatrix(length_x, length_y, mxREAL);
     mxSetData(pMxArray, phi_arr);
     matPutVariable(pmatFile, "phi", pMxArray);
