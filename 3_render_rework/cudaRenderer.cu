@@ -781,24 +781,24 @@ __global__ void kernelRenderCircles(array_type* circ_cover_flag, int num_blockx,
     // int startCirc = seperators[blockId];
     // int endCirc = seperators[blockId+1];
     // int numCircsForCurrentBlock = endCirc - startCirc;
-    __shared__ circ_id_array[1024];
+    __shared__ int circ_id_array[1024];
     int numCircsForCurrentBlock = circ_cover_flag[(numCircles-1)*num_boxes+blockId];
     int blockid = threadIdx.y*blockDim.x +threadIdx.x; //maximum 1024
-    int index = num_blocks*circleid + blockid;
+    int index = num_boxes*circleid + blockid;
 
      if (circleid<numCircles){
          if (circleid==0){
                if (circ_cover_flag[index]==1){
                    //int new_loc = numCircles*blockId;
                    //printf("index %d, new_loc %d", index, new_loc);
-                   circ_cover_id[0]=0;}}
+                   circ_id_array[0]=0;}}
          else{
          //   if (circleid>0){
                if ( circ_cover_flag[index] - circ_cover_flag[index-num_boxes] ==1){
                 //int new_loc = blockId*numCircles +circ_cover_flag[index] -1;
                 int new_loc = circ_cover_flag[index] -1;
                 //if (circ_cover_flag[index]==2){ }
-                   circ_cover_id[new_loc] = circleid; }
+                   circ_id_array[new_loc] = circleid; }
              }
          
      }    
