@@ -674,32 +674,6 @@ incl_sweep_down(int N, int dim, int twod, int twod1, array_type* output) {
 
 //--- the above should be correct
 
-__global__ void
-concurrent_write_ids(int total_size, int num_circ, int num_circ_true, int num_boxes, array_type* circ_cover_flag, int* circ_cover_id, int* separators){
-
-     //
-     int index = blockIdx.x * blockDim.x + threadIdx.x;
-     int circleid = index/num_boxes;
-     int blockid = index%num_boxes; //  index-num_boxes*circleid;
-     if (index<total_size){
-         if (circleid==0){
-               if (circ_cover_flag[index]==1){
-                   int new_loc = num_circ_true*blockid;
-                   //printf("index %d, new_loc %d", index, new_loc);
-                   circ_cover_id[new_loc]=0;}}
-         else{
-         //   if (circleid>0){
-               if ( circ_cover_flag[index] - circ_cover_flag[index-num_boxes] ==1){
-                int new_loc = blockid*num_circ_true +circ_cover_flag[index] -1;
-                //if (circ_cover_flag[index]==2){ }
-                   circ_cover_id[new_loc] = circleid; }
-             }
-         
-     }
-     //update the separators by the way
-     if (index<num_boxes) {separators[index]=circ_cover_flag[(num_circ_true-1)*num_boxes+index];}
-                           // printf(" separa %d, loca %d", separators[index], (num_circ_true-1)*num_boxes+index);}
-}
 
 
 void multi_dim_inclusive_scan(int N, int lens, int dim, array_type* device_result){
@@ -766,119 +740,71 @@ __global__ void findCircsInBlock(array_type* circ_cover_flag, int num_total_bloc
     __syncthreads();
 }
 
-/*
-void debug_set1(){
-    int* debug_flag=  new int[20]; 
-    int debug[20]  = {1,1,0,0,1, 0,0,1,0,0, 0,1,1,0,0, 0,0,0,1,1};
-    memmove(debug_flag, debug, 20*sizeof(int));
-    int* debug_flag_result = new int[20];
-    int* debug_id_result = new int[20];
-    for (int i = 0; i < 20; i++){
-        printf("%d ", debug_flag[i]);
-    }
-    printf("\n");
-    int* device_flag;
-    int* device_id;
-    int* device_separat;
-    int N_rd = nextPow2(4);
-    int B = 5;
-    int* debug_separators = new int[B];
-    int total = N_rd*B;
-    printf("total %d \n",total);
-    cudaMalloc((void **)&device_flag, sizeof(int) * total);
-    cudaMalloc((void **)&device_id, sizeof(int) * total);
-    cudaMalloc((void **)&device_separat, sizeof(int) * B);
+__global__ void
+concurrent_write_ids(int total_size, int num_circ, int num_circ_true, int num_boxes, array_type* circ_cover_flag, int* circ_cover_id, int* separators){
 
-    cudaMemcpy(device_flag, debug_flag, total * sizeof(int),cudaMemcpyHostToDevice);
-    multi_dim_inclusive_scan(total, N_rd, B, device_flag);
-    concurrent_write_ids<<<10,10>>>(total, N_rd, 4, B, device_flag,  device_id, device_separat);
-
-    cudaMemcpy(debug_flag_result, device_flag, total * sizeof(int),cudaMemcpyDeviceToHost);
-    cudaMemcpy(debug_id_result, device_id, total * sizeof(int),cudaMemcpyDeviceToHost);
-    cudaMemcpy(debug_separators, device_separat, B * sizeof(int),cudaMemcpyDeviceToHost);
-    //cudaMemcpy(debug_id_result, device_id, total * sizeof(int),cudaMemcpyDeviceToHost);
-    //print
-    for (int i = 0; i < 20; i++){
-        printf("%d ", debug_flag_result[i]);
-    }
-    printf("\n");
-    for (int i = 0; i < 20; i++){
-        printf("%d ", debug_id_result[i]);
-    }
-    printf("\n");
-    for (int i = 0; i < B; i++){
-        printf("%d ", debug_separators[i]);
-    }
-    printf("\n");
-
+     //
+     int index = blockIdx.x * blockDim.x + threadIdx.x;
+     int circleid = index/num_boxes;
+     int blockid = index%num_boxes; //  index-num_boxes*circleid;
+     if (index<total_size){
+         if (circleid==0){
+               if (circ_cover_flag[index]==1){
+                   int new_loc = num_circ_true*blockid;
+                   //printf("index %d, new_loc %d", index, new_loc);
+                   circ_cover_id[new_loc]=0;}}
+         else{
+         //   if (circleid>0){
+               if ( circ_cover_flag[index] - circ_cover_flag[index-num_boxes] ==1){
+                int new_loc = blockid*num_circ_true +circ_cover_flag[index] -1;
+                //if (circ_cover_flag[index]==2){ }
+                   circ_cover_id[new_loc] = circleid; }
+             }
+         
+     }
+     //update the separators by the way
+     if (index<num_boxes) {separators[index]=circ_cover_flag[(num_circ_true-1)*num_boxes+index];}
+                           // printf(" separa %d, loca %d", separators[index], (num_circ_true-1)*num_boxes+index);}
 }
 
-void debug_set2(){
-    int* debug_flag=  new int[20];
-    int debug[20]  = {1,1,0,0,1, 0,0,1,0,0, 0,1,1,0,0, 0,0,0,1,1};
-    memmove(debug_flag, debug, 20*sizeof(int));
-    int* debug_flag_result = new int[20];
-    int* debug_id_result = new int[20];
-    for (int i = 0; i < 20; i++){
-        printf("%d ", debug_flag[i]);
-    }
-    printf("\n");
-    int* device_flag;
-    int* device_id;
-    int* device_separat;
-    int N=5;
-    int N_rd = nextPow2(N);
-    int B = 4;
-    int* debug_separators = new int[B];
-    int total = N_rd*B;
-    int total_rd = N_rd*B;
-    printf("total %d \n",total_rd);
-    cudaMalloc((void **)&device_flag, sizeof(int) * total_rd);
-    cudaMalloc((void **)&device_id, sizeof(int) * total_rd);
-    cudaMalloc((void **)&device_separat, sizeof(int) * B);
-
-    cudaMemcpy(device_flag, debug_flag, total * sizeof(int),cudaMemcpyHostToDevice);
-    multi_dim_inclusive_scan(total_rd, N_rd, B, device_flag);
-    concurrent_write_ids<<<10,10>>>(total, N_rd, N, B, device_flag,  device_id, device_separat);
-
-    cudaMemcpy(debug_flag_result, device_flag, total * sizeof(int),cudaMemcpyDeviceToHost);
-    cudaMemcpy(debug_id_result, device_id, total_rd * sizeof(int),cudaMemcpyDeviceToHost);
-    cudaMemcpy(debug_separators, device_separat, B * sizeof(int),cudaMemcpyDeviceToHost);
-    //cudaMemcpy(debug_id_result, device_id, total * sizeof(int),cudaMemcpyDeviceToHost);
-    //print
-    for (int i = 0; i < 20; i++){
-        printf("%d ", debug_flag_result[i]);
-    }
-    printf("\n");
-    for (int i = 0; i < 20; i++){
-        printf("%d ", debug_id_result[i]);
-    }
-    printf("\n");
-    for (int i = 0; i < B; i++){
-        printf("%d ", debug_separators[i]);
-    }
-    printf("\n");
-
-}
-*/
 // kernelRenderCircles -- (CUDA device code)
 //
 // Each thread renders a circle.  Since there is no protection to
 // ensure order of update or mutual exclusion on the output image, the
 // resulting image will be incorrect.
-__global__ void kernelRenderCircles(int* seperators, int* circ_cover_id, int num_blockx, int num_blocky, int numCircles) {
+__global__ void kernelRenderCircles(array_type* circ_cover_flag, int num_blockx, int num_blocky, int num_boxes, int numCircles) {
 
     // obtain block id
     int blockId = blockIdx.y * num_blockx + blockIdx.x;
+    int circleid = blockId;
     // obtain start circle and end circle using the seperators
     // int startCirc = seperators[blockId];
     // int endCirc = seperators[blockId+1];
     // int numCircsForCurrentBlock = endCirc - startCirc;
-    int numCircsForCurrentBlock = seperators[blockId];
-    
+    __shared__ circ_id_array[1024];
+    int numCircsForCurrentBlock = circ_cover_flag[(numCircles-1)*num_boxes+blockId];
+    int blockid = threadIdx.y*blockDim.x +threadIdx.x; //maximum 1024
+    int index = num_blocks*circleid + blockid;
+
+     if (circleid<numCircles){
+         if (circleid==0){
+               if (circ_cover_flag[index]==1){
+                   //int new_loc = numCircles*blockId;
+                   //printf("index %d, new_loc %d", index, new_loc);
+                   circ_cover_id[0]=0;}}
+         else{
+         //   if (circleid>0){
+               if ( circ_cover_flag[index] - circ_cover_flag[index-num_boxes] ==1){
+                //int new_loc = blockId*numCircles +circ_cover_flag[index] -1;
+                int new_loc = circ_cover_flag[index] -1;
+                //if (circ_cover_flag[index]==2){ }
+                   circ_cover_id[new_loc] = circleid; }
+             }
+         
+     }    
+    __syncthreads();
     // we can access the circle id through the circ_cover_id array: N*B
-    int startAddInCoverId = numCircles * blockId;
-    // startAddInCoverId + numCircForCurrentBlock
+
 
     // update all the pixels within this blockId
     short imageWidth = cuConstRendererParams.imageWidth;
@@ -897,7 +823,7 @@ __global__ void kernelRenderCircles(int* seperators, int* circ_cover_id, int num
     // iterate over all the circles on this block
     // AT: update by order
     for (int idx = 0; idx < numCircsForCurrentBlock; idx++){
-        int circleIdx = circ_cover_id[startAddInCoverId + idx];
+        int circleIdx = circ_id_array[idx];
        // if ( (threadIdx.x==0) && (threadIdx.y==0))  {printf("%d %d  ",blockId,circleIdx);}
         int index3 = circleIdx * 3;
         // read postion and radius then use shadePixel to update
@@ -984,7 +910,7 @@ CudaRenderer::render() {
     //cudaDeviceSynchronize();
     double time3 = CycleTimer::currentSeconds();
     printf("step 2(1) %f s\n",time3-time2);
-    concurrent_write_ids<<<num_block_1d,block_size_1d>>>(total_size, num_circ_rd, numCircles, num_total_blocks, \
+   // concurrent_write_ids<<<num_block_1d,block_size_1d>>>(total_size, num_circ_rd, numCircles, num_total_blocks, \
         circ_cover_flag,  circ_cover_id, separators); //check circ_cover_id,separators
 
     double time4 = CycleTimer::currentSeconds();
@@ -1025,10 +951,12 @@ CudaRenderer::render() {
  */
     //step3: use the separators and circ_cover_id to render the circle
     // define dim for block
+    int dim_circ_1d = (int) ceil(sqrt(numCircles));
     dim3 blockDimBlock(block_dimx, block_dimy);
-    dim3 gridDimBlock(num_blockx, num_blocky);
+    
+    dim3 gridDimBlock(std::max(num_blockx,dim_circ_1d), std::max(num_blocky,dim_circ_1d));
 
-    kernelRenderCircles<<<gridDimBlock, blockDimBlock>>>(separators, circ_cover_id, num_blockx, num_blocky, numCircles);
+    kernelRenderCircles<<<gridDimBlock, blockDimBlock>>>(circ_cover_flag, num_blockx, num_blocky, num_total_blocks, numCircles);
 //    cudaDeviceSynchronize();
     double time5 = CycleTimer::currentSeconds();  
     printf("step 3 %f s \n",time5-time4);  
