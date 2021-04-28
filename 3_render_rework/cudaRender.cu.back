@@ -949,14 +949,14 @@ CudaRenderer::render() {
     cudaMalloc((void **)&circ_cover_id, sizeof(int) * total_size);
     cudaMalloc((void **)&separators, sizeof(int) * num_total_blocks);
     //cudaMemset(circ_cover_id, -1, sizeof(int) * total_size);    
-    //cudaDeviceSynchronize();
+    cudaDeviceSynchronize();
 
     double time1 = CycleTimer::currentSeconds();
     printf("step 0 %f s\n",time1-time0);
 
     //step1: give status  0/1 to the circ_cover_flag based on coverage
     findCircsInBlock<<<num_block_1d,block_size_1d>>> (circ_cover_flag, num_total_blocks, num_blockx, num_blocky);
-    //cudaDeviceSynchronize();
+    cudaDeviceSynchronize();
 
     /*cudaMemcpy(check_flags, circ_cover_flag, total_size_rd * sizeof(int),cudaMemcpyDeviceToHost);
     for (int i = 0; i < num_total_blocks; i++){
@@ -981,12 +981,12 @@ CudaRenderer::render() {
     printf("step 1 %f s\n",time2-time1);
     multi_dim_inclusive_scan(total_size_rd, num_circ_rd, num_total_blocks, circ_cover_flag);  //check circ_cover_flag
     //(2) concurrent_write id and separators
-    //cudaDeviceSynchronize();
+    cudaDeviceSynchronize();
     double time3 = CycleTimer::currentSeconds();
     printf("step 2(1) %f s\n",time3-time2);
     concurrent_write_ids<<<num_block_1d,block_size_1d>>>(total_size, num_circ_rd, numCircles, num_total_blocks, \
         circ_cover_flag,  circ_cover_id, separators); //check circ_cover_id,separators
-
+    cudaDeviceSynchronize();
     double time4 = CycleTimer::currentSeconds();
     printf("step 2(2) %f s\n",time4-time3);
     //right now, the last 
@@ -1029,7 +1029,7 @@ CudaRenderer::render() {
     dim3 gridDimBlock(num_blockx, num_blocky);
 
     kernelRenderCircles<<<gridDimBlock, blockDimBlock>>>(separators, circ_cover_id, num_blockx, num_blocky, numCircles);
-//    cudaDeviceSynchronize();
+    cudaDeviceSynchronize();
     double time5 = CycleTimer::currentSeconds();  
     printf("step 3 %f s \n",time5-time4);  
     //step4: small size
