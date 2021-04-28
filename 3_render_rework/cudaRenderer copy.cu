@@ -722,10 +722,9 @@ concurrent_write_ids(int total_size, int num_circ, int num_circ_true, int num_bo
                            // printf(" separa %d, loca %d", separators[index], (num_circ_true-1)*num_boxes+index);}
 }
 
-/*
-__global__ void
-concurrent_write_ids_v2(int total_size, int num_circ, int num_circ_true,, int num_box_max, int num_boxes, array_type* circ_cover_flag, int* circ_cover_id, int partitionId, int partitionNum){
 
+__global__ void
+concurrent_write_ids_v2(int total_size, int num_circ, int num_circ_true, int num_box_max, int num_boxes, array_type* circ_cover_flag, int* circ_cover_id, int partitionId, int partitionNum){
      //
      int index = blockIdx.x * blockDim.x + threadIdx.x;
      int circleid = index/num_boxes;
@@ -746,7 +745,7 @@ concurrent_write_ids_v2(int total_size, int num_circ, int num_circ_true,, int nu
      }
     //  again? need sort? is this efficient? sort: Pair: box_id, circle_id?
 }
-*/
+
 void multi_dim_inclusive_scan(int N, int lens, int dim, array_type* device_result){
 
     int blocksize = 512;
@@ -762,7 +761,6 @@ void multi_dim_inclusive_scan(int N, int lens, int dim, array_type* device_resul
     }
 
 }
-
 
 #include "circleBoxTest.cu_inl"
 __global__ void findCircsInBlock(array_type* circ_cover_flag, int num_total_blocks, int num_blockx, int num_blocky, int partitionId, int partitionNum) {
@@ -865,7 +863,7 @@ __global__ void findNumCircsInBlock(int* separators, int num_total_blocks, int n
         float  rad = cuConstRendererParams.radius[i];
         // use the circleInBoxConservative in circleBoxTest.cu_inl
         if( circleInBoxConservative(p.x, p.y, rad, blockL, blockR, blockT, blockB) ){
-            numCirclesInBlockPartition += 1;
+            numCirclesInBlockPartition += 1; 
         }
     }
 
