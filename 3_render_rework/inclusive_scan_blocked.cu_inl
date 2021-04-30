@@ -1,11 +1,11 @@
-
 #define LOG2_WARP_SIZE 5U
 #define WARP_SIZE (1U << LOG2_WARP_SIZE)
-// #define SCAN_BLOCK_DIM  
-//Almost the same as naive scan1Inclusive, but doesn't need __syncthreads()
-//assuming size <= WARP_SIZE
 inline __device__ uint
 warpScanInclusive(int threadIndex, uint idata, volatile uint *s_Data, uint size){
+    // Note some of the calculations are obscure because they are optimized.
+    // For example, (threadIndex & (size - 1)) computes threadIndex % size,
+    // which works, assuming size is a power of 2.
+
     uint pos = 2 * threadIndex - (threadIndex & (size - 1));
     s_Data[pos] = 0;
     pos += size;
@@ -17,12 +17,13 @@ warpScanInclusive(int threadIndex, uint idata, volatile uint *s_Data, uint size)
     return s_Data[pos];
 }
 
-inline __device__ uint warpScanExclusive(int threadIndex, uint idata, volatile uint *sScratch, uint size){
+inline __device__ uint 
+warpScanExclusive(int threadIndex, uint idata, volatile uint *sScratch, uint size){
     return warpScanInclusive(threadIndex, idata, sScratch, size) - idata;
 }
 
 __inline__ __device__ void
-sharedMemExclusiveScan(int threadIndex, uint* sInput, uint* sOutput, volatile uint* sScratch, uint size)
+incl_scan_shared_mem(int threadIndex, uint* sInput, uint* sOutput, volatile uint* sScratch, uint size)
 {
     if (size > WARP_SIZE) {
 
@@ -52,10 +53,17 @@ sharedMemExclusiveScan(int threadIndex, uint* sInput, uint* sOutput, volatile ui
         //return updated warp scans with exclusive scan results
         __syncthreads();
 
-        sOutput[threadIndex] = warpResult + sScratch[threadIndex >> LOG2_WARP_SIZE] - idata;
+        sInput[threadIndex] = warpResult + sScratch[threadIndex >> LOG2_WARP_SIZE];
 
     } else if (threadIndex < WARP_SIZE) {
         uint idata = sInput[threadIndex];
-        sOutput[threadIndex] = warpScanExclusive(threadIndex, idata, sScratch, size);
+        sInput[threadIndex] = warpScanInclusive(threadIndex, idata, sScratch, size);
     }
 }
+
+
+
+
+
+
+

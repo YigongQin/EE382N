@@ -1,0 +1,18 @@
+__inline__ __device__ void
+incl_scan_shared_mem(int threadIndex, uint* Input, uint size){
+
+
+         for(uint twod = 1; twod < size; twod <<= 1){
+            uint twod1 = twod*2; 
+            if((threadIndex & (twod1 - 1)) == 0) 
+            {Input[threadIndex+ (twod1 -1)] += Input[threadIndex+ (twod -1)];}
+            __syncthreads();
+         }
+         
+         for(uint twod = size/4; twod >=1; twod >>= 1){
+            uint twod1 = twod*2; 
+            if((threadIndex>0) && ((threadIndex & (twod1 - 1)) == 0)) 
+            {Input[threadIndex+ twod -1] += Input[threadIndex -1];}
+            __syncthreads();
+         }
+}

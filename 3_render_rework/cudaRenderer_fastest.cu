@@ -32,8 +32,8 @@ __managed__ int num_ones;
 #define BLOCKSIZE 1024
 #define SCAN_BLOCK_DIM BLOCKSIZE
 
-#include "inclusive_scan.cu_inl"
-// #include "exclusiveScan.cu_inl"
+#include "inclusive_scan_naive.cu_inl"
+//#include "inclusive_scan_blocked.cu_inl"
 /* Helper function to round up to a power of 2. 
  */
 static inline long long int nextPow2(long long int n)
@@ -1052,12 +1052,12 @@ __global__ void kernelRenderCircles_shared_mem(int* separators, int num_total_bl
     // separators[blockId] = numCirclesPerPixel[numPixels - 1];
     // if (pixelId == 0) {separators[blockId] = 5};
     // TODO: we need a inclusive scan here and update separators! we can check the seperators
-    incl_scan_shared_mem(pixelId, numCirclesPerPixel, Out_numCirclesPerPixel, Scratch, BLOCK_DIM_X * BLOCK_DIM_Y); 
-    // sharedMemExclusiveScan(pixelId, numCirclesPerPixel, Out_numCirclesPerPixel, Scratch, BLOCK_DIM_X * BLOCK_DIM_Y); 
+    //incl_scan_shared_mem(pixelId, numCirclesPerPixel, Out_numCirclesPerPixel, Scratch, BLOCK_DIM_X * BLOCK_DIM_Y); 
+    incl_scan_shared_mem(pixelId, numCirclesPerPixel,BLOCK_DIM_X * BLOCK_DIM_Y);
     __syncthreads();
     
-    int totalCircles = Out_numCirclesPerPixel[numPixels - 1];
-    separators[blockId] = Out_numCirclesPerPixel[numPixels - 1];
+    int totalCircles = numCirclesPerPixel[numPixels - 1];
+    separators[blockId] = numCirclesPerPixel[numPixels - 1];
     __syncthreads();
 
     // // printf("%d ", totalCircles);
@@ -1065,7 +1065,7 @@ __global__ void kernelRenderCircles_shared_mem(int* separators, int num_total_bl
     __shared__ int circ_cover_id_b[3000]; // 2500 is enough for circleInBox()
     
     int startAddr = 0;
-    if (pixelId != 0) {startAddr = Out_numCirclesPerPixel[pixelId - 1];}
+    if (pixelId != 0) {startAddr = numCirclesPerPixel[pixelId - 1];}
 
     // // how to update? AT! __syncthreads();
     for (int i =0; i < numCirclesInBlockPartition; i++){
