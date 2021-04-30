@@ -29,6 +29,10 @@
 #define BLOCK_DIM_Y 32
 __managed__ int num_ones;
 
+#define BLOCKSIZE 1024
+#define SCAN_BLOCK_DIM BLOCKSIZE
+
+#include "inclusive_scan.cu_inl"
 /* Helper function to round up to a power of 2. 
  */
 static inline long long int nextPow2(long long int n)
@@ -969,8 +973,10 @@ __global__ void findCircCoverIdInBlock(int* separators, int* circ_cover_flag, in
 __global__ void kernelRenderCircles_shared_mem(int* separators, int num_total_blocks, int num_blockx, int num_blocky, int numPartitions) {
     // Use partition to seperate numCircles can not fully parallel due to multiDimScan
     // Use sharedMem to optimize memory access
-    __shared__ int numCirclesPerPixel[BLOCK_DIM_X * BLOCK_DIM_Y];
-    
+    __shared__ uint numCirclesPerPixel[BLOCK_DIM_X * BLOCK_DIM_Y];
+    __shared__ uint Out_numCirclesPerPixel[BLOCK_DIM_X * BLOCK_DIM_Y];
+    __shared__ uint Scratch[2*BLOCK_DIM_X * BLOCK_DIM_Y];
+ 
     int numPixels = BLOCK_DIM_X * BLOCK_DIM_Y;
     int blockId = blockIdx.y * num_blockx + blockIdx.x;
     if (blockId >= num_total_blocks){return;}
@@ -1031,15 +1037,19 @@ __global__ void kernelRenderCircles_shared_mem(int* separators, int num_total_bl
     __syncthreads();
 
     // TODO: we need a inclusive scan here and update separators! we can check the seperators
+    incl_scan_shared_mem(pixelId, numCirclesPerPixel, Out_numCirclesPerPixel, Scratch, BLOCK_DIM_X * BLOCK_DIM_Y); 
+    __syncthreads();
 
 
-    separators[blockId] = numCirclesPerPixel[numPixels - 1];
-    int totalCircles = numCirclesPerPixel[numPixels - 1];
+    separators[blockId] = Out_numCirclesPerPixel[numPixels - 1];
+    int totalCircles = Out_numCirclesPerPixel[numPixels - 1];
+
+    printf("%d ", totalCircles);
     // update block-wise circ_cover_id here
     __shared__ int circ_cover_id_b[2500]; // 2500 is enough for circleInBox()
     
     int startAddr = 0;
-    if (pixelId != 0) {startAddr = numCirclesPerPixel[pixelId - 1];}
+    if (pixelId != 0) {startAddr = Out_numCirclesPerPixel[pixelId - 1];}
 
     // how to update? AT! __syncthreads();
     for (int i =0; i < numCirclesInBlockPartition; i++){
@@ -1241,14 +1251,14 @@ CudaRenderer::render() {
 
     // simplified version of render
     // define dim for block
-    // dim3 blockDimBlock(block_dimx, block_dimy);
-    // dim3 gridDimBlock(num_blockx, num_blocky);
+     dim3 blockDimBlock(block_dimx, block_dimy);
+     dim3 gridDimBlock(num_blockx, num_blocky);
 
     // allocate separators to check whether we are right
-    // cudaMalloc((void **)&separators, sizeof(int) * num_total_blocks);
-    // kernelRenderCircles_shared_mem<<<gridDimBlock, blockDimBlock>>>(separators, num_total_blocks, num_blockx, num_blocky, num_blockx*num_blocky);
-    // cudaDeviceSynchronize();
-
+     cudaMalloc((void **)&separators, sizeof(int) * num_total_blocks);
+     kernelRenderCircles_shared_mem<<<gridDimBlock, blockDimBlock>>>(separators, num_total_blocks, num_blockx, num_blocky, num_blockx*num_blocky);
+     cudaDeviceSynchronize();
+/*
     if (numCircles < 10000){
         int num_circ_rd = nextPow2(numCircles); //rounded numCircles
         long total_size = numCircles*num_total_blocks;
@@ -1278,13 +1288,13 @@ CudaRenderer::render() {
         findCircsInBlock<<<num_block_1d,block_size_1d>>> (circ_cover_flag, num_total_blocks, num_blockx, num_blocky, 0, numCircles);
         cudaDeviceSynchronize();
 
-        /*cudaMemcpy(check_flags, circ_cover_flag, total_size_rd * sizeof(int),cudaMemcpyDeviceToHost);
+        cudaMemcpy(check_flags, circ_cover_flag, total_size_rd * sizeof(int),cudaMemcpyDeviceToHost);
         for (int i = 0; i < num_total_blocks; i++){
         if (i%num_blockx==0) {printf("\n");}
         printf("%d ",  check_flags[i]);
         }
         printf("\n");   
-        */
+        
         // // copy the data back to host to print to see our results
         // array_type* checkarray = NULL; 
         // checkarray = (array_type*)malloc(sizeof(array_type) * num_total_blocks);
@@ -1535,7 +1545,7 @@ CudaRenderer::render() {
         printf("step 2(c) %f s\n",timeC_sum);
         printf("step 3 %f s \n",time5_sum);
     }
-
+*/
     //step4: small size
     //step4: small size
 
