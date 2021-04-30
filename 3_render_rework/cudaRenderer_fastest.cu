@@ -29,10 +29,10 @@
 #define BLOCK_DIM_Y 32
 __managed__ int num_ones;
 
-#define BLOCKSIZE 1024
-#define SCAN_BLOCK_DIM BLOCKSIZE
+//#define BLOCKSIZE 1024
+//#define SCAN_BLOCK_DIM BLOCKSIZE
 
-#include "inclusive_scan_naive.cu_inl"
+//#include "inclusive_scan_naive.cu_inl"
 //#include "inclusive_scan_blocked.cu_inl"
 /* Helper function to round up to a power of 2. 
  */
@@ -971,12 +971,31 @@ __global__ void findCircCoverIdInBlock(int* separators, int* circ_cover_flag, in
         separators[blockId] = numCirclesPerPixel[0];
 }
 
+__inline__ __device__ void
+incl_scan_shared_mem(int threadIndex, unsigned int* Input, int size){
+
+
+         for(int twod = 1; twod < size; twod <<= 1){
+            int twod1 = twod*2;
+            if((threadIndex & (twod1 - 1)) == 0)
+            {Input[threadIndex+ (twod1 -1)] += Input[threadIndex+ (twod -1)];}
+            __syncthreads();
+         }
+
+         for(int twod = size/4; twod >=1; twod >>= 1){
+            int twod1 = twod*2;
+            if((threadIndex>0) && ((threadIndex & (twod1 - 1)) == 0))
+            {Input[threadIndex+ twod -1] += Input[threadIndex -1];}
+            __syncthreads();
+         }
+}
+
 __global__ void kernelRenderCircles_shared_mem(int* separators, int num_total_blocks, int num_blockx, int num_blocky, int numPartitions) {
     // Use partition to seperate numCircles can not fully parallel due to multiDimScan
     // Use sharedMem to optimize memory access
-    __shared__ uint numCirclesPerPixel[BLOCK_DIM_X * BLOCK_DIM_Y];
-    __shared__ uint Out_numCirclesPerPixel[BLOCK_DIM_X * BLOCK_DIM_Y];
-    __shared__ uint Scratch[BLOCK_DIM_X * BLOCK_DIM_Y*2];
+    __shared__ unsigned int numCirclesPerPixel[BLOCK_DIM_X * BLOCK_DIM_Y];
+   // __shared__ uint Out_numCirclesPerPixel[BLOCK_DIM_X * BLOCK_DIM_Y];
+   // __shared__ uint Scratch[BLOCK_DIM_X * BLOCK_DIM_Y*2];
  
     int numPixels = BLOCK_DIM_X * BLOCK_DIM_Y;
     int blockId = blockIdx.y * num_blockx + blockIdx.x;
