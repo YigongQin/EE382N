@@ -12,7 +12,7 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
-#include "/home1/apps/matlab/2020b/extern/include/mat.h"
+#include "mat.h"
 // #include <mat.h> 
 using namespace std;
 
