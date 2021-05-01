@@ -1110,135 +1110,6 @@ __global__ void kernelRenderCircles_shared_mem(int* separators, int num_total_bl
     
 }
 
-
-__global__ void kernelRenderCircles_shared_mem_skip(int* separators, int num_total_blocks, int num_blockx, int num_blocky, int numPartitions) {
-    // Use partition to seperate numCircles can not fully parallel due to multiDimScan
-    // Use sharedMem to optimize memory access
-    __shared__ unsigned int numCirclesPerPixel[BLOCK_DIM_X * BLOCK_DIM_Y];
- 
-    int numPixels = BLOCK_DIM_X * BLOCK_DIM_Y;
-    int blockId = blockIdx.y * num_blockx + blockIdx.x;
-    if (blockId >= num_total_blocks){return;}
-    int pixelId = threadIdx.y * BLOCK_DIM_X + threadIdx.x;
-    
-    //step2.1 obtain the block size
-    // image params
-    short imageWidth = cuConstRendererParams.imageWidth;
-    short imageHeight = cuConstRendererParams.imageHeight;
-    float invWidth = 1.f / imageWidth;
-    float invHeight = 1.f / imageHeight;
-
-    // compute the size of block
-    int blockId_dimX = blockId % num_blockx;
-    int blockId_dimY = blockId / num_blockx;
-
-    short blockMinX = BLOCK_DIM_X * blockId_dimX;
-    short blockMaxX = BLOCK_DIM_X * (blockId_dimX + 1);
-    short blockMinY = BLOCK_DIM_Y * blockId_dimY;
-    short blockMaxY = BLOCK_DIM_Y * (blockId_dimY + 1);  
-
-    float blockL = blockMinX * invWidth;
-    float blockR = blockMaxX * invWidth;
-    float blockB = blockMinY * invHeight;
-    float blockT = blockMaxY * invHeight;
-
-    //step2.2 obtain the circle size
-    //Each thread would take responsibility for partition of Circles
-    int numCirclesPerPartition = (cuConstRendererParams.numCircles + numPartitions - 1) / numPartitions;
-    // obtain the start and end
-    int start = numCirclesPerPartition * pixelId;
-    int end   = numCirclesPerPartition * (pixelId+1);
-    if (pixelId == (numPixels - 1)){
-        end = cuConstRendererParams.numCircles;
-    }
-    
-    int numCirclesInBlockPartition = 0;
-    int circ_cover_id_p[100];
-    // To find whether they are in this block and update separators[blockId]
-    // Add local recorder to record the cover_circ_id
-
-    for (int i = start; i < end; i++){
-        if(i < cuConstRendererParams.numCircles){
-            int index3 = 3 * i;
-            // read postion and radius
-            float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
-            float  rad = cuConstRendererParams.radius[i];
-            // use the circleInBoxConservative in circleBoxTest.cu_inl
-            if(circleInBoxConservative(p.x, p.y, rad, blockL, blockR, blockT, blockB) ){
-                circ_cover_id_p[numCirclesInBlockPartition] = i;
-                numCirclesInBlockPartition += 1;
-            }
-        }
-    }
-
-    // such that we can have in each thread how many circles are in this block
-    // then we do what? we want to sum up of the numCirclesInBlockPartition
-    numCirclesPerPixel[pixelId] = numCirclesInBlockPartition;
-    __syncthreads();
-
-
-    // TODO: we need a inclusive scan here and update separators! we can check the seperators
-    incl_scan_shared_mem(pixelId, numCirclesPerPixel,BLOCK_DIM_X * BLOCK_DIM_Y);
-    __syncthreads();
-    
-    int totalCircles = numCirclesPerPixel[numPixels - 1];
-    separators[blockId] = numCirclesPerPixel[numPixels - 1];
-    __syncthreads();
-
-    // // printf("%d ", totalCircles);
-    // // update block-wise circ_cover_id here
-    __shared__ int circ_cover_id_b[3000]; // 2500 is enough for circleInBox()
-    
-    int startAddr = 0;
-    if (pixelId != 0) {startAddr = numCirclesPerPixel[pixelId - 1];}
-
-    // // how to update? AT! __syncthreads();
-    for (int i =0; i < numCirclesInBlockPartition; i++){
-        circ_cover_id_b[i + startAddr] = circ_cover_id_p[i];
-    }
-    __syncthreads();
-    // parallel reduction
-    // no need for parallel reduction use a inclusive scan is enough
-
-    // for (unsigned int j = numPixels / 2; j > 0; j >>= 1)
-    // {
-    //     if (pixelId < j)
-    //     numCirclesPerPixel[pixelId] += numCirclesPerPixel[pixelId + j];
-    //     __syncthreads();
-    // }
-    // if (pixelId == 0)
-    //     separators[blockId] = numCirclesPerPixel[0];
-
-
-    // // directly render is okay! we donn't need another render
-    // // pixel data
-    int pixelX = blockIdx.x * blockDim.x + threadIdx.x;
-	int pixelY = blockIdx.y * blockDim.y + threadIdx.y;
-
-    if (pixelY >= imageHeight || pixelX >= imageWidth) return;
-
-    float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
-                                                 invHeight * (static_cast<float>(pixelY) + 0.5f));
-    float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + pixelX)]);
-    
-    // already good for biglittle and littlebig
-    int startPlace = 0;
-    if (totalCircles > 2000) {startPlace = 1700;}
-    else if (totalCircles > 1500) {startPlace = 1000;}
-    else if (totalCircles > 1000) {startPlace = 700;}
-    else if (totalCircles > 700) {startPlace = 500;}
-    else if (totalCircles > 100) {startPlace = 70;}
-    
-    for (int i = startPlace; i < totalCircles; i ++){
-        int circleIdx = circ_cover_id_b[i];
-        int index3 = circleIdx * 3;
-        // read postion and radius then use shadePixel to update
-        float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
-        shadePixel(circleIdx, pixelCenterNorm, p, imgPtr);
-    }
-    
-}
-
 /*
 void debug_set1(){
     int* debug_flag=  new int[20]; 
@@ -1379,34 +1250,6 @@ __global__ void kernelRenderCircles(int* seperators, int* circ_cover_id, int num
     }
 }
 
-__global__ void kernelRenderCircles_simple(int numCircles, int num_blockx, int num_blocky){
-    short imageWidth = cuConstRendererParams.imageWidth;
-    short imageHeight = cuConstRendererParams.imageHeight;
-    float invWidth = 1.f / imageWidth;
-    float invHeight = 1.f / imageHeight;
-
-    // for all pixels in the region
-    // update each pixel based on given sequence of circles on each region
-    int pixelX = blockIdx.x * blockDim.x + threadIdx.x;
-	int pixelY = blockIdx.y * blockDim.y + threadIdx.y;
-
-    if (pixelY >= imageHeight || pixelX >= imageWidth) return;
-
-    float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
-        invHeight * (static_cast<float>(pixelY) + 0.5f));
-    
-    float4 *imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + pixelX)]);
-
-    // iterate over all circles on this region
-    for (int idx = 0; idx < numCircles; idx++){
-        // update pixel under circle order
-        int circleIdx = idx;
-        int index3 = 3 * circleIdx;
-        // read position and radius
-        float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
-        shadePixel(circleIdx, pixelCenterNorm, p, imgPtr);
-    }
-}
 
 void
 CudaRenderer::render() {
@@ -1442,18 +1285,9 @@ CudaRenderer::render() {
     //      if (i%num_blockx==0) {printf("\n");} 
     //      printf("%d ",  check_sps[i]);
     //  }
-    if (sceneName == BIG_LITTLE || sceneName == LITTLE_BIG || sceneName == CIRCLE_TEST_100K || sceneName == CIRCLE_TEST_10K) {
-     kernelRenderCircles_shared_mem_skip<<<gridDimBlock, blockDimBlock>>>(separators, num_total_blocks, num_blockx, num_blocky, num_blockx*num_blocky);
+
+     kernelRenderCircles_shared_mem<<<gridDimBlock, blockDimBlock>>>(separators, num_total_blocks, num_blockx, num_blocky, num_blockx*num_blocky);
      cudaDeviceSynchronize();
-    }
-    else if (sceneName == CIRCLE_RGB || sceneName == CIRCLE_RGBY){
-        kernelRenderCircles_simple<<<gridDimBlock, blockDimBlock>>>(numCircles, num_blockx, num_blocky);
-        cudaDeviceSynchronize();
-    }
-    else{
-        kernelRenderCircles_shared_mem<<<gridDimBlock, blockDimBlock>>>(separators, num_total_blocks, num_blockx, num_blocky, num_blockx*num_blocky);
-        cudaDeviceSynchronize();
-    }
     //  printf("\n");
     //  cudaMemcpy(check_sps, separators, num_total_blocks * sizeof(int),cudaMemcpyDeviceToHost);
     //     for (int i = 0; i < num_total_blocks; i++){
