@@ -29,11 +29,6 @@
 #define BLOCK_DIM_Y 32
 __managed__ int num_ones;
 
-//#define BLOCKSIZE 1024
-//#define SCAN_BLOCK_DIM BLOCKSIZE
-
-//#include "inclusive_scan_naive.cu_inl"
-//#include "inclusive_scan_blocked.cu_inl"
 /* Helper function to round up to a power of 2. 
  */
 static inline long long int nextPow2(long long int n)
@@ -1265,11 +1260,11 @@ CudaRenderer::render() {
     int num_blockx = (image->width+block_dimx-1)/block_dimx;
     int num_blocky = (image->height+block_dimy-1)/block_dimy;    
     int num_total_blocks = num_blockx*num_blocky;
-    int* circ_cover_id;
+//    int* circ_cover_id;
     int* separators; // size:num_total_blocks     [num_circ per block]
-    array_type* circ_cover_flag; // the most big array [0,1]
+  //  array_type* circ_cover_flag; // the most big array [0,1]
 
-    int* check_sps = new int[num_total_blocks];
+    //int* check_sps = new int[num_total_blocks];
     // simplified version of render
     // define dim for block
      dim3 blockDimBlock(block_dimx, block_dimy);
@@ -1288,7 +1283,9 @@ CudaRenderer::render() {
 
      kernelRenderCircles_shared_mem<<<gridDimBlock, blockDimBlock>>>(separators, num_total_blocks, num_blockx, num_blocky, num_blockx*num_blocky);
      cudaDeviceSynchronize();
-    //  printf("\n");
+     cudaFree(separators);  
+
+  //  printf("\n");
     //  cudaMemcpy(check_sps, separators, num_total_blocks * sizeof(int),cudaMemcpyDeviceToHost);
     //     for (int i = 0; i < num_total_blocks; i++){
     //         if (i%num_blockx==0) {printf("\n");} 
