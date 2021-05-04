@@ -202,13 +202,13 @@ set_BC_mpi(float* ps, float* ph, float* U, float* dpsi, float* ph2, int fnx, int
 
 
 __global__ void
-collect(float* ps, float* ph, float* U, float* dpsi, float* ph2, BC_buffs BC, int fnx, int fny){
+collect(float *ptr[], BC_buffs BC, int fnx, int fny){
 
   // parallism we have: ha_wd*max(nx,ny)
   //  int Lx = num_fields*hd*nx;
   //  int Ly = num_fields*hd*ny;
   //  int Lxy = num_fields*hd*hd;
-  float *ptr[5]={ps,ph,U,dpsi,ph2};
+  //float *ptr[5]={ps,ph,U,dpsi,ph2};
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int hd = cP.ha_wd;
   int i = index/hd;  // range [0,max]
@@ -256,9 +256,9 @@ collect(float* ps, float* ph, float* U, float* dpsi, float* ph2, BC_buffs BC, in
 }
 
 __global__ void
-distribute(float* ps, float* ph, float* U, float* dpsi, float* ph2, BC_buffs BC, int fnx, int fny){
+distribute(float *ptr[], BC_buffs BC, int fnx, int fny){
 
-  float *ptr[5]={ps,ph,U,dpsi,ph2};
+  //float *ptr[5]={ps,ph,U,dpsi,ph2};
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int hd = cP.ha_wd;
   int i = index/hd;  // range [0,max]
@@ -652,11 +652,10 @@ void allocate_mpi_buffs(GlobalConstants params, BC_buffs DNS, int fnx, int fny){
 
 
 
-void exchange_BC(MPI_Comm comm, BC_buffs BC, GlobalConstants params, int fnx, int fny, int nt, int rank, int px, int py, int nprocx, int nprocy){
+void exchange_BC(MPI_Comm comm, BC_buffs BC, int hd, int fnx, int fny, int nt, int rank, int px, int py, int nprocx, int nprocy){
 
     int ntag = 8*nt;
     int num_fields = 5;
-    int hd = params.ha_wd;
     int nx = fnx-2*hd;
     int ny = fny-2*hd;
     int Lx = num_fields*hd*nx;
@@ -706,9 +705,15 @@ void exchange_BC(MPI_Comm comm, BC_buffs BC, GlobalConstants params, int fnx, in
 }
 
 
-void commu_BC(){
+void commu_BC(MPI_Comm comm, BC_buffs BC, params_MPI pM, int nt, int hd, int fnx, int fny, float* v1, float* v2, float* v3, float* v4, float* v5){
 
-
+      float *ptr[5] = [v1, v2, v3, v4, v5];
+      collect(ptr, BC, fnx, fny);
+      MPI_Barrier( comm );      
+      exchange_BC(comm, BC_buffs BC, hd, fnx, fny, nt, pM.rank, pM.px, pM.py, pM.nprocx, pM.nprocy);
+      MPI_Barrier( comm );
+      collect(ptr, BC, fnx, fny)
+      
 }
 
 void print2d(float* array, int fnx, int fny){
@@ -773,6 +778,7 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
   // MPI send/recv buffers
   BC_buffs SR_buffs; 
   allocate_mpi_buffs(params, SR_buffs, fnx, fny);
+  static int max_var = 5;
 
   //---macrodata for interpolation
 
@@ -807,6 +813,7 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
      //print2d(T_m,fnx,fny);
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt, T_m );
      //print2d(phi_old,fnx,fny);
+     commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_new, phi_new, U_old, dpsi, phi_old);
      //cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
      //cudaDeviceSynchronize();
@@ -817,6 +824,8 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
      XYT_lin_interp<<< num_block_2d, blocksize_2d >>>(x_device, y_device, t_cur_step,\
       Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, T_m, mac.Nx, mac.Ny, mac.Nt, fnx, fny);
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1, T_m );
+     
+     commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_old, phi_old, U_new, dpsi, phi_new);
      //cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
      //cudaDeviceSynchronize();
