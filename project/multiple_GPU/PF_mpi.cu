@@ -713,11 +713,11 @@ void commu_BC(MPI_Comm comm, BC_buffs BC, params_MPI pM, int nt, int hd, int fnx
       int blocksize_2d = 128;  // seems reduce the block size makes it a little faster, but around 128 is okay.
       int num_block_2d = (hd*(fnx+fny)+blocksize_2d-1)/blocksize_2d;
     
-      collect<<< >>>(ptr, BC, fnx, fny);
+      collect<<< num_block_2d, blocksize_2d>>>(ptr, BC, fnx, fny);
       MPI_Barrier( comm );      
       exchange_BC(comm, BC, hd, fnx, fny, nt, pM.rank, pM.px, pM.py, pM.nprocx, pM.nprocy);
       MPI_Barrier( comm );
-      distribute<<< >>>(ptr, BC, fnx, fny);
+      distribute<<<num_block_2d, blocksize_2d >>>(ptr, BC, fnx, fny);
       
 }
 
