@@ -86,8 +86,22 @@ struct Mac_input{
 struct BC_buffs{
    // R>L, T>B
    // the dimension of each is ha_wd*num_fields*length
-   float *sendR, *sendL, *sendT, *sendB, *sendRT, *sendRB, *sendLT, *sendLB;
-   float *recvR, *recvL, *recvT, *recvB, *recvRT, *recvRB, *recvLT, *recvLB;
+   float* sendR; 
+   float* sendL;
+   float* sendT;
+   float* sendB;
+   float* sendRT;
+   float* sendRB; 
+   float* sendLT;
+   float* sendLB;
+   float* recvR;
+   float* recvL;
+   float* recvT;
+   float* recvB;
+   float* recvRT;
+   float* recvRB;
+   float* recvLT;
+   float* recvLB;
    
 
 
@@ -222,8 +236,8 @@ collect(float *ptr[], BC_buffs BC, int fnx, int fny){
       int field_indexR = j+nx+(i+hd)*fnx;
       int stridey = hd*ny; // stride is 
       for (int fid=0; fid<5; fid++) {
-      BC.sendL[index+fid*stridey] = ptr[fid][field_indexL];
-      BC.sendR[index+fid*stridey] = ptr[fid][field_indexR];
+        BC.sendL[index+fid*stridey] = ptr[fid][field_indexL];
+        BC.sendR[index+fid*stridey] = ptr[fid][field_indexR];
        
       }
 
@@ -618,7 +632,7 @@ rhs_U(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fny ){
 
 
 
-void allocate_mpi_buffs(GlobalConstants params, BC_buffs DNS, int fnx, int fny){
+void allocate_mpi_buffs(GlobalConstants params, BC_buffs *DNS, int fnx, int fny){
 
     int num_fields = 5;
     int hd = params.ha_wd;
@@ -628,23 +642,23 @@ void allocate_mpi_buffs(GlobalConstants params, BC_buffs DNS, int fnx, int fny){
     int Ly = num_fields*hd*ny;
     int Lxy = num_fields*hd*hd;
  
-    cudaMalloc((void **)&(DNS.sendR),  sizeof(float) * Ly);
-    cudaMalloc((void **)&(DNS.sendL),  sizeof(float) * Ly);
-    cudaMalloc((void **)&(DNS.sendT),  sizeof(float) * Lx);
-    cudaMalloc((void **)&(DNS.sendB),  sizeof(float) * Lx);    
-    cudaMalloc((void **)&(DNS.recvR),  sizeof(float) * Ly);
-    cudaMalloc((void **)&(DNS.recvL),  sizeof(float) * Ly);
-    cudaMalloc((void **)&(DNS.recvT),  sizeof(float) * Lx);
-    cudaMalloc((void **)&(DNS.recvB),  sizeof(float) * Lx);  
+    cudaMalloc((void **)&(DNS->sendR),  sizeof(float) * Ly);
+    cudaMalloc((void **)&(DNS->sendL),  sizeof(float) * Ly);
+    cudaMalloc((void **)&(DNS->sendT),  sizeof(float) * Lx);
+    cudaMalloc((void **)&(DNS->sendB),  sizeof(float) * Lx);    
+    cudaMalloc((void **)&(DNS->recvR),  sizeof(float) * Ly);
+    cudaMalloc((void **)&(DNS->recvL),  sizeof(float) * Ly);
+    cudaMalloc((void **)&(DNS->recvT),  sizeof(float) * Lx);
+    cudaMalloc((void **)&(DNS->recvB),  sizeof(float) * Lx);  
 
-    cudaMalloc((void **)&(DNS.sendRT),  sizeof(float) * Lxy);
-    cudaMalloc((void **)&(DNS.sendLT),  sizeof(float) * Lxy);
-    cudaMalloc((void **)&(DNS.sendRB),  sizeof(float) * Lxy);
-    cudaMalloc((void **)&(DNS.sendLB),  sizeof(float) * Lxy);    
-    cudaMalloc((void **)&(DNS.recvRT),  sizeof(float) * Lxy);
-    cudaMalloc((void **)&(DNS.recvLT),  sizeof(float) * Lxy);
-    cudaMalloc((void **)&(DNS.recvRB),  sizeof(float) * Lxy);
-    cudaMalloc((void **)&(DNS.recvLB),  sizeof(float) * Lxy); 
+    cudaMalloc((void **)&(DNS->sendRT),  sizeof(float) * Lxy);
+    cudaMalloc((void **)&(DNS->sendLT),  sizeof(float) * Lxy);
+    cudaMalloc((void **)&(DNS->sendRB),  sizeof(float) * Lxy);
+    cudaMalloc((void **)&(DNS->sendLB),  sizeof(float) * Lxy);    
+    cudaMalloc((void **)&(DNS->recvRT),  sizeof(float) * Lxy);
+    cudaMalloc((void **)&(DNS->recvLT),  sizeof(float) * Lxy);
+    cudaMalloc((void **)&(DNS->recvRB),  sizeof(float) * Lxy);
+    cudaMalloc((void **)&(DNS->recvLB),  sizeof(float) * Lxy); 
 
 
 
@@ -707,17 +721,17 @@ void exchange_BC(MPI_Comm comm, BC_buffs BC, int hd, int fnx, int fny, int nt, i
 
 void commu_BC(MPI_Comm comm, BC_buffs BC, params_MPI pM, int nt, int hd, int fnx, int fny, float* v1, float* v2, float* v3, float* v4, float* v5){
 
-      float *ptr[5] = [v1, v2, v3, v4, v5];
+      float *ptr[5] = {v1, v2, v3, v4, v5};
 
 
       int blocksize_2d = 128;  // seems reduce the block size makes it a little faster, but around 128 is okay.
       int num_block_2d = (hd*(fnx+fny)+blocksize_2d-1)/blocksize_2d;
     
-      collect<<< num_block_2d, blocksize_2d>>>(ptr, BC, fnx, fny);
-      MPI_Barrier( comm );      
-      exchange_BC(comm, BC, hd, fnx, fny, nt, pM.rank, pM.px, pM.py, pM.nprocx, pM.nprocy);
-      MPI_Barrier( comm );
-      distribute<<<num_block_2d, blocksize_2d >>>(ptr, BC, fnx, fny);
+     collect<<< num_block_2d, blocksize_2d>>>(ptr, BC, fnx, fny);
+     // MPI_Barrier( comm );      
+     // exchange_BC(comm, BC, hd, fnx, fny, nt, pM.rank, pM.px, pM.py, pM.nprocx, pM.nprocy);
+     // MPI_Barrier( comm );
+     // distribute<<<num_block_2d, blocksize_2d >>>(ptr, BC, fnx, fny);
       
 }
 
@@ -781,8 +795,9 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
   cudaMemcpyToSymbol(cP, &params, sizeof(GlobalConstants) );
 
   // MPI send/recv buffers
-  BC_buffs SR_buffs; 
-  allocate_mpi_buffs(params, SR_buffs, fnx, fny);
+  BC_buffs SR_buffs;
+  BC_buffs *buff_pointer = &SR_buffs; 
+  allocate_mpi_buffs(params, buff_pointer, fnx, fny);
   static int max_var = 5;
 
   //---macrodata for interpolation
