@@ -7,7 +7,7 @@
 #include "CycleTimer.h"
 
 using namespace std;
-void printCudaInfo();
+void printCudaInfo(int rank, int i);
 extern float toBW(int bytes, float sec);
 
 struct GlobalConstants {
@@ -312,28 +312,31 @@ XYT_lin_interp(float* x, float* y, float t, float* X, float* Y, float* T, float*
    int C = blockIdx.x * blockDim.x + threadIdx.x;
    int j=C/fnx;
    int i=C-j*fnx;
-   
+   //printf("%d ",C);
    float Dt = T[1]-T[0];
    int kt = (int) ((t-T[0])/Dt);
+  // printf("%d ",kt);
    float delta_t = (t-T[0])/Dt-kt;
-   float Dx = X[1]-X[0];
+   //printf("%f ",Dt);
+   float Dx = X[1]-X[0]; // (X[Nx-1]-X[0]) / (Nx-1)
    float Dy = Y[1]-Y[0];
    
    if ( (i<fnx) && (j<fny) ){
-   
+      //printf("%d ",i); 
       int kx = (int) (( x[i] - X[0] )/Dx);
       float delta_x = ( x[i] - X[0] )/Dx - kx;
-      
+         //printf("%f ",delta_x);   
       int ky = (int) (( y[j] - Y[0] )/Dy);
       float delta_y = ( y[j] - Y[0] )/Dy - ky;  
-      
-      int offset = kx + ky*Nx + kt*Nx*Ny;
-      int offset_n = kx + ky*Nx + (kt+1)*Nx*Ny
+      //printf("%d ",kx); 
+      int offset =  kx + ky*Nx + kt*Nx*Ny;
+      int offset_n =  kx + ky*Nx + (kt+1)*Nx*Ny;
+     // printf("%d ", Nx);
       u_m[C] = ( (1.0f-delta_x)*(1.0f-delta_y)*u_3d[ offset ] + (1.0f-delta_x)*delta_y*u_3d[ offset+Nx ] \
                +delta_x*(1.0f-delta_y)*u_3d[ offset+1 ] +   delta_x*delta_y*u_3d[ offset+Nx+1 ] )*(1.0f-delta_t) + \
              ( (1.0f-delta_x)*(1.0f-delta_y)*u_3d[ offset_n ] + (1.0f-delta_x)*delta_y*u_3d[ offset_n+Nx ] \
                +delta_x*(1.0f-delta_y)*u_3d[ offset_n+1 ] +   delta_x*delta_y*u_3d[ offset_n+Nx+1 ] )*delta_t;    
-   
+     // printf("%f ", u_m[C]); 
    
    }
 
@@ -368,7 +371,7 @@ initialize(float* ps_old, float* ph_old, float* U_old, float* ps_new, float* ph_
 }
 
 // anisotropy functions
-__device__ float
+__inline__ __device__ float
 atheta(float ux, float uz){
   
    float ux2 = cP.cosa*ux + cP.sina*uz;
@@ -383,7 +386,7 @@ atheta(float ux, float uz){
 }
 
 
-__device__ float
+__inline__ __device__ float
 aptheta(float ux, float uz){
 
    float uxr = cP.cosa*ux + cP.sina*uz;
@@ -497,7 +500,7 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         # 3. double well (transformed): sqrt2 * phi + nonlinear terms
         #
         # =============================================================*/
-
+        //float Up = (y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
         float Up = (T_m[C]-cP.Ti)/(cP.c_infm/cP.k)/(1.0-cP.k);  //(y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
 
         float rhs_psi = ((JR-JL) + (JT-JB) + extra) * cP.hi*cP.hi + \
@@ -703,7 +706,24 @@ void exchange_BC(MPI_Comm comm, BC_buffs BC, GlobalConstants params, int fnx, in
 }
 
 
+void commu_BC(){
 
+
+}
+
+void print2d(float* array, int fnx, int fny){
+
+   int length = fnx*fny;
+   float* cpu_array = new float[fnx*fny];
+  
+   cudaMemcpy(cpu_array, array, length * sizeof(float),cudaMemcpyDeviceToHost);
+
+   for (int i=0; i<length; i++){
+       if (i%fnx==0) printf("\n");
+       printf("%4.2f ",cpu_array[i]);
+   }
+
+}
 
 
 void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U){
@@ -712,8 +732,8 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
   int num_gpus_per_node = 4;
   int device_id_innode = pM.rank % num_gpus_per_node;
     //gpu_name = cuda.select_device( )
-  cudaSetDevice(pM.rank, device_id_innode); 
-  printCudaInfo(device_id_innode);
+  cudaSetDevice(device_id_innode); 
+  printCudaInfo(pM.rank,device_id_innode);
   
   float* x_device;// = NULL;
   float* y_device;// = NULL;
@@ -750,20 +770,21 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
   // pass all the read-only params into global constant
   cudaMemcpyToSymbol(cP, &params, sizeof(GlobalConstants) );
 
+  // MPI send/recv buffers
+  BC_buffs SR_buffs; 
+  allocate_mpi_buffs(params, SR_buffs, fnx, fny);
 
-
-
-//---for interp
+  //---macrodata for interpolation
 
   Mac_input Mgpu;
-  cudaMalloc((void **)&Mgpu.X_mac,  sizeof(float) * mac.Nx);
-  cudaMalloc((void **)&Mgpu.Y_mac,  sizeof(float) * mac.Ny);
-  cudaMalloc((void **)&Mgpu.t_mac,    sizeof(float) * mac.Nt);
-  cudaMalloc((void **)&Mgpu.T_3D,    sizeof(float) * mac.Nx*mac.Ny*mac.Nt);
-  cudaMemcpy(Mgpu.X_mac, mac.X_mac, sizeof(float) * Nx, cudaMemcpyHostToDevice);  
-  cudaMemcpy(Mgpu.Y_mac, mac.Y_mac, sizeof(float) * Ny, cudaMemcpyHostToDevice); 
-  cudaMemcpy(Mgpu.t_mac, mac.t_mac, sizeof(float) * Nt, cudaMemcpyHostToDevice);  
-  cudaMemcpy(Mgpu.T_3D, mac.T_3D, sizeof(float) * Nt* Nx* Ny, cudaMemcpyHostToDevice);   
+  cudaMalloc((void **)&(Mgpu.X_mac),  sizeof(float) * mac.Nx);
+  cudaMalloc((void **)&(Mgpu.Y_mac),  sizeof(float) * mac.Ny);
+  cudaMalloc((void **)&(Mgpu.t_mac),    sizeof(float) * mac.Nt);
+  cudaMalloc((void **)&(Mgpu.T_3D),    sizeof(float) * mac.Nx*mac.Ny*mac.Nt);
+  cudaMemcpy(Mgpu.X_mac, mac.X_mac, sizeof(float) * mac.Nx, cudaMemcpyHostToDevice);  
+  cudaMemcpy(Mgpu.Y_mac, mac.Y_mac, sizeof(float) * mac.Ny, cudaMemcpyHostToDevice); 
+  cudaMemcpy(Mgpu.t_mac, mac.t_mac, sizeof(float) * mac.Nt, cudaMemcpyHostToDevice);  
+  cudaMemcpy(Mgpu.T_3D, mac.T_3D, sizeof(float) * mac.Nt* mac.Nx* mac.Ny, cudaMemcpyHostToDevice);   
 //--
 
    int blocksize_1d = 128;
@@ -774,14 +795,18 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
    initialize<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, U_new, x_device, y_device, fnx, fny);
    set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_new, dpsi, fnx, fny);
    set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_old, dpsi, fnx, fny);
+   //print2d(phi_old,fnx,fny);
    cudaDeviceSynchronize();
    double startTime = CycleTimer::currentSeconds();
    for (int kt=0; kt<params.Mt/2; kt++){
    //  printf("time step %d\n",kt);
      float t_cur_step = 2*kt*params.dt*params.tau0;
      XYT_lin_interp<<< num_block_2d, blocksize_2d >>>(x_device, y_device, t_cur_step,\
-      Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, T_m, Mgpu.Nx, Mgpu.Ny, Mgpu.Nt, fnx, fny);
+      Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, T_m, mac.Nx, mac.Ny, mac.Nt, fnx, fny);
+     cudaDeviceSynchronize();
+     //print2d(T_m,fnx,fny);
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt, T_m );
+     //print2d(phi_old,fnx,fny);
      //cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
      //cudaDeviceSynchronize();
@@ -790,13 +815,13 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
      //cudaDeviceSynchronize();
      t_cur_step = (2*kt+1)*params.dt*params.tau0;
      XYT_lin_interp<<< num_block_2d, blocksize_2d >>>(x_device, y_device, t_cur_step,\
-      Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, T_m, Mgpu.Nx, Mgpu.Ny, Mgpu.Nt, fnx, fny);
+      Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, T_m, mac.Nx, mac.Ny, mac.Nt, fnx, fny);
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1, T_m );
      //cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
      //cudaDeviceSynchronize();
      rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi, fnx, fny);
-     //cudaDeviceSynchronize();
+     //cudaDeviceSynchronize();*/
    }
    cudaDeviceSynchronize();
    double endTime = CycleTimer::currentSeconds();
