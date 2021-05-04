@@ -12,10 +12,11 @@ LOGS	   := logs
 ARCH=$(shell uname | sed -e 's/-.*//g')
 CUDA_PATH=$(TACC_CUDA_DIR)
 OBJDIR=objs
-INC_FLAGS=-I../common
-CXX=g++ 
-CXXFLAGS=-O3 -Wall $(INC_FLAGS)
-MPICXX=mpicxx
+INC_FLAGS=-I../common 
+MPI_INC=-I/opt/ibm/spectrum_mpi/include/
+CXX=xlc++ 
+CXXFLAGS=-O3 -Wall $(INC_FLAGS) $(MPI_INC) -std=c++11
+MPICXX=mpic++
 ################################################################################
 # When compiling with NVCC, the arch flag (-arch) specifies the name of 
 # the NVIDIA GPU architecture that the CUDA files will be compiled for.
