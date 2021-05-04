@@ -111,6 +111,22 @@ struct BC_buffs{
 
 __constant__ GlobalConstants cP;
 
+
+void print2d(float* array, int fnx, int fny){
+
+   int length = fnx*fny;
+   float* cpu_array = new float[fnx*fny];
+
+   cudaMemcpy(cpu_array, array, length * sizeof(float),cudaMemcpyDeviceToHost);
+
+   for (int i=0; i<length; i++){
+       if (i%fnx==0) printf("\n");
+       printf("%4.2f ",cpu_array[i]);
+   }
+
+}
+
+
 // Device codes 
 
 // boundary condition
@@ -372,8 +388,8 @@ initialize(float* ps_old, float* ph_old, float* U_old, float* ps_new, float* ph_
   if ( (i>0) && (i<fnx-1) && (j>0) && (j<fny-1) ) {
     float xc = x[i];
     float yc = y[j];
-    int cent = fnx/2;
-    ps_old[C] = 5.625f - sqrtf( (xc-x[cent])*(xc-x[cent]) + yc*yc )/cP.W0 ;
+    //int cent = fnx/2;
+    ps_old[C] = 5.625f - sqrtf( (xc-72.0f)*(xc-72.0f) + yc*yc )/cP.W0 ;
     //if (C<1000){printf("ps %f\n",ps_old[C]);}
     ps_new[C] = ps_old[C];
     U_old[C] = cP.U0;
@@ -728,25 +744,13 @@ void commu_BC(MPI_Comm comm, BC_buffs BC, params_MPI pM, int nt, int hd, int fnx
       int num_block_2d = (hd*(fnx+fny)+blocksize_2d-1)/blocksize_2d;
     
      collect<<< num_block_2d, blocksize_2d>>>(ptr, BC, fnx, fny);
-     // MPI_Barrier( comm );      
-     // exchange_BC(comm, BC, hd, fnx, fny, nt, pM.rank, pM.px, pM.py, pM.nprocx, pM.nprocy);
-     // MPI_Barrier( comm );
-     // distribute<<<num_block_2d, blocksize_2d >>>(ptr, BC, fnx, fny);
+    // print2d(BC.sendR, fny, 1);
+     MPI_Barrier( comm );      
+     exchange_BC(comm, BC, hd, fnx, fny, nt, pM.rank, pM.px, pM.py, pM.nprocx, pM.nprocy);
+     //print2d(BC.recvR, fny-2, 1);
+     MPI_Barrier( comm );
+     distribute<<<num_block_2d, blocksize_2d >>>(ptr, BC, fnx, fny);
       
-}
-
-void print2d(float* array, int fnx, int fny){
-
-   int length = fnx*fny;
-   float* cpu_array = new float[fnx*fny];
-  
-   cudaMemcpy(cpu_array, array, length * sizeof(float),cudaMemcpyDeviceToHost);
-
-   for (int i=0; i<length; i++){
-       if (i%fnx==0) printf("\n");
-       printf("%4.2f ",cpu_array[i]);
-   }
-
 }
 
 
@@ -835,7 +839,7 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
      //print2d(phi_old,fnx,fny);
      commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_new, phi_new, U_old, dpsi, phi_old);
      //cudaDeviceSynchronize();
-     set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
+     set_BC_mpi<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
      //cudaDeviceSynchronize();
      rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi, fnx, fny);
 
@@ -847,7 +851,7 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
      
      commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_old, phi_old, U_new, dpsi, phi_new);
      //cudaDeviceSynchronize();
-     set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
+     set_BC_mpi<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, phi_new, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
      //cudaDeviceSynchronize();
      rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi, fnx, fny);
      //cudaDeviceSynchronize();*/

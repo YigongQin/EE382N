@@ -11,7 +11,8 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
-// #include <mat.h> 
+#include <algorithm>
+#include <iterator>
 using namespace std;
 
 
@@ -120,6 +121,19 @@ void getParam(std::string lineText, std::string key, float& param){
     }
 }
 
+
+void read_input(std::string input, float* target){
+    std::string line;
+    int num_lines = 0;
+    std::ifstream graph(input);
+
+    while (std::getline(graph, line))
+        {
+           std::stringstream ss(line);
+           ss >> target[num_lines];
+           num_lines+=1;}
+
+}
 /*
 void matread(std::string matfile, std::string key, std::vector<double>& v)
 {
@@ -215,6 +229,7 @@ int main(int argc, char** argv)
         params.ictype = (int)ictype;
 
         // new multiple
+        getParam(lineText, "Ti", params.Ti);
         getParam(lineText, "ha_wd", ha_wd);
         params.ha_wd = (int)ha_wd;
         getParam(lineText, "xmin", params.xmin);
@@ -275,6 +290,9 @@ int main(int argc, char** argv)
     std::cout<<"ny = "<<params.ny<<std::endl;
     std::cout<<"lxd = "<<params.lxd<<std::endl;
     std::cout<<"lyd = "<<params.lyd<<std::endl;
+
+    std::cout<<"Ti = "<<params.Ti<<std::endl;
+    std::cout<<"ha_wd = "<<params.ha_wd<<std::endl;
 
     }
     // step1 plus: read mat file from macrodata
@@ -372,7 +390,22 @@ int main(int argc, char** argv)
     mac.Nx = 11;
     mac.Ny = 41;
     mac.Nt = 11;
+    mac.X_mac = new float[mac.Nx];
+    mac.Y_mac = new float[mac.Ny];
+    mac.t_mac = new float[mac.Nt];
+    mac.T_3D = new float[mac.Nx*mac.Ny*mac.Nt];
 
+    read_input("x.txt", mac.X_mac);
+    read_input("y.txt", mac.Y_mac);
+    read_input("t.txt", mac.t_mac);
+    read_input("Temp.txt", mac.T_3D);
+
+    /*std::cout<<"y= ";
+    for(int i=0; i<mac.Nx*mac.Ny*mac.Nt; i++){
+        std::cout<<mac.T_3D[i]<<" ";
+    }
+    std::cout<<std::endl;
+   */
 
     setup(comm, pM, params, mac, length_x, length_y, x, y, phi, psi, Uc);
 
@@ -382,7 +415,11 @@ int main(int argc, char** argv)
     //}
     //std::cout<<std::endl;
     // step 3 (time marching): call the kernels Mt times
-
+    string out_format = "_data.csv";
+    string out_file = to_string(pM.rank) + out_format;
+    ofstream out( out_file );
+    out.precision(5);
+    copy( phi, phi + length, ostream_iterator<float>( out, "\n" ) );
     MPI_Finalize();
     delete[] phi;
     delete[] Uc;
