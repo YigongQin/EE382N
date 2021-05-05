@@ -175,7 +175,7 @@ set_BC(float* ps, float* ph, float* U, float* dpsi, int fnx, int fny){
 }
 
 __global__ void
-set_BC_mpi(float* ps, float* ph, float* U, float* dpsi, float* ph2, int fnx, int fny, \
+set_BC_mpi_y(float* ps, float* ph, float* U, float* dpsi, float* ph2, int fnx, int fny, \
         int px, int py, int nprocx, int nprocy, int ha_wd){
 
   int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -204,6 +204,12 @@ set_BC_mpi(float* ps, float* ph, float* U, float* dpsi, float* ph2, int fnx, int
            }
   }
 
+}
+__global__ void
+set_BC_mpi_x(float* ps, float* ph, float* U, float* dpsi, float* ph2, int fnx, int fny, \
+        int px, int py, int nprocx, int nprocy, int ha_wd){
+
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
   if ( index<fny ){
   // orignially it is 0,2; fnx-1, fnx-3
   // now ha_wd-1, ha_wd+1; fnx-ha_wd, fnx-ha_wd-2  
@@ -385,7 +391,8 @@ initialize(float* ps_old, float* ph_old, float* U_old, float* ps_new, float* ph_
   // if F layout, the 1D array has peroidicity of nx    
   // all the variables should be functions of x and y
   // size (nx+2)*(ny+2), x:nx, y:ny
-  if ( (i>0) && (i<fnx-1) && (j>0) && (j<fny-1) ) {
+  //if ( (i>0) && (i<fnx-1) && (j>0) && (j<fny-1) ) {
+  if ( (i<fnx) && (j<fny) ) {
     float xc = x[i];
     float yc = y[j];
     //int cent = fnx/2;
@@ -530,8 +537,8 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         # 3. double well (transformed): sqrt2 * phi + nonlinear terms
         #
         # =============================================================*/
-        //float Up = (y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
-        float Up = (T_m[C]-cP.Ti)/(cP.c_infm/cP.k)/(1.0-cP.k);  //(y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
+        float Up = (y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
+        //float Up = (T_m[C]-cP.Ti)/(cP.c_infm/cP.k)/(1.0-cP.k);  //(y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
 
         float rhs_psi = ((JR-JL) + (JT-JB) + extra) * cP.hi*cP.hi + \
                    cP.sqrt2*ph[C] - cP.lamd*(1.0f-ph[C]*ph[C])*cP.sqrt2*(U[C] + Up);
@@ -744,13 +751,14 @@ void commu_BC(MPI_Comm comm, BC_buffs BC, params_MPI pM, int nt, int hd, int fnx
       int num_block_2d = (hd*(fnx+fny)+blocksize_2d-1)/blocksize_2d;
     
      collect<<< num_block_2d, blocksize_2d>>>(ptr, BC, fnx, fny);
+     cudaDeviceSynchronize();
     // print2d(BC.sendR, fny, 1);
      MPI_Barrier( comm );      
      exchange_BC(comm, BC, hd, fnx, fny, nt, pM.rank, pM.px, pM.py, pM.nprocx, pM.nprocy);
      //print2d(BC.recvR, fny-2, 1);
      MPI_Barrier( comm );
      distribute<<<num_block_2d, blocksize_2d >>>(ptr, BC, fnx, fny);
-      
+     cudaDeviceSynchronize();      
 }
 
 
@@ -802,7 +810,7 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
   BC_buffs SR_buffs;
   BC_buffs *buff_pointer = &SR_buffs; 
   allocate_mpi_buffs(params, buff_pointer, fnx, fny);
-  static int max_var = 5;
+  //static int max_var = 5;
 
   //---macrodata for interpolation
 
@@ -823,8 +831,16 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
    int num_block_1d = (fnx+fny+blocksize_1d-1)/blocksize_1d;
    printf("block size %d, # blocks %d\n", blocksize_2d, num_block_2d); 
    initialize<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, U_new, x_device, y_device, fnx, fny);
-   set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_new, dpsi, fnx, fny);
-   set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_old, dpsi, fnx, fny);
+  // set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_new, dpsi, fnx, fny);
+  // set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_old, dpsi, fnx, fny);
+   commu_BC(comm, SR_buffs, pM, 0, params.ha_wd, fnx, fny, psi_new, phi_new, U_old, dpsi, phi_old);
+   commu_BC(comm, SR_buffs, pM, 1, params.ha_wd, fnx, fny, psi_old, phi_old, U_new, dpsi, phi_new);
+     //cudaDeviceSynchronize();
+   set_BC_mpi_x<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
+   set_BC_mpi_y<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
+   set_BC_mpi_x<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, phi_new, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
+   set_BC_mpi_y<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, phi_new, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
+
    //print2d(phi_old,fnx,fny);
    cudaDeviceSynchronize();
    double startTime = CycleTimer::currentSeconds();
@@ -833,13 +849,14 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
      float t_cur_step = 2*kt*params.dt*params.tau0;
      XYT_lin_interp<<< num_block_2d, blocksize_2d >>>(x_device, y_device, t_cur_step,\
       Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, T_m, mac.Nx, mac.Ny, mac.Nt, fnx, fny);
-     cudaDeviceSynchronize();
+  //   cudaDeviceSynchronize();
      //print2d(T_m,fnx,fny);
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt, T_m );
      //print2d(phi_old,fnx,fny);
      commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_new, phi_new, U_old, dpsi, phi_old);
      //cudaDeviceSynchronize();
-     set_BC_mpi<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
+     set_BC_mpi_x<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
+     set_BC_mpi_y<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
      //cudaDeviceSynchronize();
      rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi, fnx, fny);
 
@@ -851,7 +868,8 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
      
      commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_old, phi_old, U_new, dpsi, phi_new);
      //cudaDeviceSynchronize();
-     set_BC_mpi<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, phi_new, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
+     set_BC_mpi_x<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, phi_new, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
+     set_BC_mpi_y<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, phi_new, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
      //cudaDeviceSynchronize();
      rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi, fnx, fny);
      //cudaDeviceSynchronize();*/
