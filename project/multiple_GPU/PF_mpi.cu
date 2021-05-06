@@ -238,39 +238,42 @@ set_BC_mpi_x(float* ps, float* ph, float* U, float* dpsi, float* ph2, int fnx, i
 
 
 __global__ void
-collect(float *ptr[], BC_buffs BC, int fnx, int fny){
+collect2(float *ptr[], BC_buffs BC, int fnx, int fny, int num_fields, int max_len){
 
   // parallism we have: ha_wd*max(nx,ny)
   //  int Lx = num_fields*hd*nx;
   //  int Ly = num_fields*hd*ny;
   //  int Lxy = num_fields*hd*hd;
   //float *ptr[5]={ps,ph,U,dpsi,ph2};
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int C = blockIdx.x * blockDim.x + threadIdx.x;
   int hd = cP.ha_wd;
+
+  int fid = C/(max_len*hd);
+  int index = C-fid*max_len*hd;
   int i = index/hd;  // range [0,max]
   int j = index-i*hd;  // range [0,hd]
   int nx = fnx-2*hd; // actual size.
   int ny = fny-2*hd;
   int stridexy = hd*hd;
-  if ( (i<ny) && (j<hd)){
+  if ( (i<ny) && (j<hd) && (fid<num_fields)){
       // left,right length ny
       int field_indexL = j+hd+(i+hd)*fnx;
       int field_indexR = j+nx+(i+hd)*fnx;
       int stridey = hd*ny; // stride is 
-      for (int fid=0; fid<5; fid++) {
+     // for (int fid=0; fid<5; fid++) {
         BC.sendL[index+fid*stridey] = ptr[fid][field_indexL];
         BC.sendR[index+fid*stridey] = ptr[fid][field_indexR];
        
-      }
+     // }
 
   }
   
-  if ( (i<nx) && (j<hd)){
+  if ( (i<nx) && (j<hd) && (fid<num_fields)){
        // up,bottom, length nx
       int field_indexB = i+hd+(j+hd)*fnx;
       int field_indexT = i+hd+(j+ny)*fnx;
       int stridex = hd*nx; // stride is 
-      for (int fid=0; fid<5; fid++) {
+      //for (int fid=0; fid<5; fid++) {
        BC.sendB[index+fid*stridex] = ptr[fid][field_indexB];
        BC.sendT[index+fid*stridex] = ptr[fid][field_indexT];
          if (i<hd){
@@ -284,12 +287,113 @@ collect(float *ptr[], BC_buffs BC, int fnx, int fny){
          BC.sendRT[index+fid*stridexy] = ptr[fid][field_indexRT];
        
        }
-      }
+      //}
   
   }
 
   
 }
+
+
+__global__ void
+collect(float *ptr[], BC_buffs BC, int fnx, int fny){
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int hd = cP.ha_wd;
+  int i = index/hd;  // range [0,max]
+  int j = index-i*hd;  // range [0,hd]
+  int nx = fnx-2*hd; // actual size.
+  int ny = fny-2*hd;
+  int stridexy = hd*hd;
+  if ( (i<ny) && (j<hd)){
+      // left,right length ny
+      int field_indexL = j+hd+(i+hd)*fnx;
+      int field_indexR = j+nx+(i+hd)*fnx;
+      int stridey = hd*ny; // stride is
+      for (int fid=0; fid<5; fid++) {
+        BC.sendL[index+fid*stridey] = ptr[fid][field_indexL];
+        BC.sendR[index+fid*stridey] = ptr[fid][field_indexR];
+
+      }
+
+  }
+
+  if ( (i<nx) && (j<hd)){
+       // up,bottom, length nx
+      int field_indexB = i+hd+(j+hd)*fnx;
+      int field_indexT = i+hd+(j+ny)*fnx;
+      int stridex = hd*nx; // stride is
+      for (int fid=0; fid<5; fid++) {
+       BC.sendB[index+fid*stridex] = ptr[fid][field_indexB];
+       BC.sendT[index+fid*stridex] = ptr[fid][field_indexT];
+         if (i<hd){
+         int field_indexLB = i+hd+(j+hd)*fnx;
+         int field_indexLT = i+hd+(j+ny)*fnx;
+         int field_indexRB = i+nx+(j+hd)*fnx;
+         int field_indexRT = i+nx+(j+ny)*fnx;
+         BC.sendLB[index+fid*stridexy] = ptr[fid][field_indexLB];
+         BC.sendLT[index+fid*stridexy] = ptr[fid][field_indexLT];
+         BC.sendRB[index+fid*stridexy] = ptr[fid][field_indexRB];
+         BC.sendRT[index+fid*stridexy] = ptr[fid][field_indexRT];
+
+       }
+      }
+
+  }
+
+
+}
+
+__global__ void
+distribute2(float *ptr[], BC_buffs BC, int fnx, int fny, int num_fields, int max_len){
+
+  int C = blockIdx.x * blockDim.x + threadIdx.x;
+  int hd = cP.ha_wd;
+
+  int fid = C/(max_len*hd);
+  int index = C-fid*max_len*hd;
+  //float *ptr[5]={ps,ph,U,dpsi,ph2};
+  int i = index/hd;  // range [0,max]
+  int j = index-i*hd;  // range [0,hd]
+  int nx = fnx-2*hd; // actual size.
+  int ny = fny-2*hd;
+  int stridexy = hd*hd;
+
+  if ( (i<ny) && (j<hd) && (fid<num_fields)){
+      // left,right length ny
+      int field_indexL = j+(i+hd)*fnx;
+      int field_indexR = j+nx+hd+(i+hd)*fnx;
+      int stridey = hd*ny; // stride is
+     // for (int fid=0; fid<5; fid++) {
+      ptr[fid][field_indexL] = BC.recvL[index+fid*stridey];
+      ptr[fid][field_indexR] = BC.recvR[index+fid*stridey];
+
+      //}
+
+  }
+  if ( (i<nx) && (j<hd) && (fid<num_fields)){
+       // up,bottom, length nx
+      int field_indexB = i+hd+(j)*fnx;
+      int field_indexT = i+hd+(j+ny+hd)*fnx;
+      int stridex = hd*nx; // stride is
+     // for (int fid=0; fid<5; fid++) {
+       ptr[fid][field_indexB] = BC.recvB[index+fid*stridex];
+       ptr[fid][field_indexT] = BC.recvT[index+fid*stridex];
+         if (i<hd){
+         int field_indexLB = i+(j)*fnx;
+         int field_indexLT = i+(j+ny+hd)*fnx;
+         int field_indexRB = i+nx+hd+(j)*fnx;
+         int field_indexRT = i+nx+hd+(j+ny+hd)*fnx;
+         ptr[fid][field_indexLB] = BC.recvLB[index+fid*stridexy];
+         ptr[fid][field_indexLT] = BC.recvLT[index+fid*stridexy];
+         ptr[fid][field_indexRB] = BC.recvRB[index+fid*stridexy];
+         ptr[fid][field_indexRT] = BC.recvRT[index+fid*stridexy];
+
+       }
+      //}
+
+  }
+}
+
 
 __global__ void
 distribute(float *ptr[], BC_buffs BC, int fnx, int fny){
@@ -770,16 +874,19 @@ void commu_BC(MPI_Comm comm, BC_buffs BC, params_MPI pM, int nt, int hd, int fnx
 
 
       int blocksize_2d = 128;  // seems reduce the block size makes it a little faster, but around 128 is okay.
-      int num_block_2d = (hd*(fnx+fny)+blocksize_2d-1)/blocksize_2d;
-    
-     collect<<< num_block_2d, blocksize_2d>>>(ptr, BC, fnx, fny);
+      int max_len = max(fny,fnx);
+      int num_block_2d = (hd*max_len*5+blocksize_2d-1)/blocksize_2d;
+      //num_block_2d = (hd*(fnx+fny)+blocksize_2d-1)/blocksize_2d;
+     collect2<<< num_block_2d, blocksize_2d>>>(ptr, BC, fnx, fny, 5, max_len);
+     //collect<<< num_block_2d, blocksize_2d>>>(ptr, BC, fnx, fny);
      cudaDeviceSynchronize();
     // print2d(BC.sendR, fny, 1);
      MPI_Barrier( comm );      
      exchange_BC(comm, BC, hd, fnx, fny, nt, pM.rank, pM.px, pM.py, pM.nprocx, pM.nprocy);
      //print2d(BC.recvR, fny-2, 1);
      MPI_Barrier( comm );
-     distribute<<<num_block_2d, blocksize_2d >>>(ptr, BC, fnx, fny);
+     //distribute<<<num_block_2d, blocksize_2d >>>(ptr, BC, fnx, fny);
+     distribute2<<<num_block_2d, blocksize_2d >>>(ptr, BC, fnx, fny, 5, max_len);
      cudaDeviceSynchronize();      
 }
 
@@ -873,7 +980,7 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, x_device, y_device, dpsi, fnx, fny, 2*kt,\
 t_cur_step, Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, mac.Nx, mac.Ny, mac.Nt );
      //print2d(phi_old,fnx,fny);
-    // commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_new, phi_new, U_old, dpsi, phi_old);
+     commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_new, phi_new, U_old, dpsi, phi_old);
      //cudaDeviceSynchronize();
      set_BC_mpi_x<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
      set_BC_mpi_y<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
@@ -885,7 +992,7 @@ t_cur_step, Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, mac.Nx, mac.Ny, mac.N
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, x_device, y_device, dpsi, fnx, fny, 2*kt+1,\
 t_cur_step, Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, mac.Nx, mac.Ny, mac.Nt );
      
-    // commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_old, phi_old, U_new, dpsi, phi_new);
+     commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_old, phi_old, U_new, dpsi, phi_new);
      //cudaDeviceSynchronize();
      set_BC_mpi_x<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, phi_new, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
      set_BC_mpi_y<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, phi_new, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
