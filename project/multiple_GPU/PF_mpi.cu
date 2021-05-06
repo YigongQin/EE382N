@@ -544,16 +544,16 @@ aptheta(float ux, float uz){
 // psi equation
 __global__ void
 rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, float* x, float* y, float* dpsi, int fnx, int fny, int nt, \
-       float t, float* X, float* Y, float* T, float* u_3d, int Nx, int Ny, int Nt ){
+       float t, float* X, float* Y, float* Tmac, float* u_3d, int Nx, int Ny, int Nt ){
 
   int C = blockIdx.x * blockDim.x + threadIdx.x;
   int j=C/fnx; 
   int i=C-j*fnx;
   // macros
-   float Dt = T[1]-T[0];
-   int kt = (int) ((t-T[0])/Dt);
+   float Dt = Tmac[1]-Tmac[0];
+   int kt = (int) ((t-Tmac[0])/Dt);
   // printf("%d ",kt);
-   float delta_t = (t-T[0])/Dt-kt;
+   float delta_t = (t-Tmac[0])/Dt-kt;
    //printf("%f ",Dt);
    float Dx = X[1]-X[0]; // (X[Nx-1]-X[0]) / (Nx-1)
    float Dy = Y[1]-Y[0];
