@@ -439,12 +439,20 @@ aptheta(float ux, float uz){
 
 // psi equation
 __global__ void
-rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
-        float* y, float* dpsi, int fnx, int fny, int nt, float* T_m ){
+rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, float* x, float* y, float* dpsi, int fnx, int fny, int nt, \
+       float t, float* X, float* Y, float* T, float* u_3d, int Nx, int Ny, int Nt ){
 
   int C = blockIdx.x * blockDim.x + threadIdx.x;
   int j=C/fnx; 
   int i=C-j*fnx;
+  // macros
+   float Dt = T[1]-T[0];
+   int kt = (int) ((t-T[0])/Dt);
+  // printf("%d ",kt);
+   float delta_t = (t-T[0])/Dt-kt;
+   //printf("%f ",Dt);
+   float Dx = X[1]-X[0]; // (X[Nx-1]-X[0]) / (Nx-1)
+   float Dy = Y[1]-Y[0];
   // if the points are at boundary, return
   if ( (i>0) && (i<fnx-1) && (j>0) && (j<fny-1) ) {
        // find the indices of the 8 neighbors for center
@@ -538,7 +546,21 @@ rhs_psi(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
         #
         # =============================================================*/
         //float Up = (y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
-        float Up = (T_m[C]-cP.Ti)/(cP.c_infm/cP.k)/(1.0-cP.k);  //(y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
+      int kx = (int) (( x[i] - X[0] )/Dx);
+      float delta_x = ( x[i] - X[0] )/Dx - kx;
+         //printf("%f ",delta_x);
+      int ky = (int) (( y[j] - Y[0] )/Dy);
+      float delta_y = ( y[j] - Y[0] )/Dy - ky;
+      //printf("%d ",kx);
+      int offset =  kx + ky*Nx + kt*Nx*Ny;
+      int offset_n =  kx + ky*Nx + (kt+1)*Nx*Ny;
+     // printf("%d ", Nx);
+      float Tinterp= ( (1.0f-delta_x)*(1.0f-delta_y)*u_3d[ offset ] + (1.0f-delta_x)*delta_y*u_3d[ offset+Nx ] \
+               +delta_x*(1.0f-delta_y)*u_3d[ offset+1 ] +   delta_x*delta_y*u_3d[ offset+Nx+1 ] )*(1.0f-delta_t) + \
+             ( (1.0f-delta_x)*(1.0f-delta_y)*u_3d[ offset_n ] + (1.0f-delta_x)*delta_y*u_3d[ offset_n+Nx ] \
+               +delta_x*(1.0f-delta_y)*u_3d[ offset_n+1 ] +   delta_x*delta_y*u_3d[ offset_n+Nx+1 ] )*delta_t;
+
+        float Up = (Tinterp-cP.Ti)/(cP.c_infm/cP.k)/(1.0-cP.k);  //(y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
 
         float rhs_psi = ((JR-JL) + (JT-JB) + extra) * cP.hi*cP.hi + \
                    cP.sqrt2*ph[C] - cP.lamd*(1.0f-ph[C]*ph[C])*cP.sqrt2*(U[C] + Up);
@@ -847,13 +869,11 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
    for (int kt=0; kt<params.Mt/2; kt++){
    //  printf("time step %d\n",kt);
      float t_cur_step = 2*kt*params.dt*params.tau0;
-     XYT_lin_interp<<< num_block_2d, blocksize_2d >>>(x_device, y_device, t_cur_step,\
-      Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, T_m, mac.Nx, mac.Ny, mac.Nt, fnx, fny);
   //   cudaDeviceSynchronize();
-     //print2d(T_m,fnx,fny);
-     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt, T_m );
+     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, x_device, y_device, dpsi, fnx, fny, 2*kt,\
+t_cur_step, Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, mac.Nx, mac.Ny, mac.Nt );
      //print2d(phi_old,fnx,fny);
-     commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_new, phi_new, U_old, dpsi, phi_old);
+    // commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_new, phi_new, U_old, dpsi, phi_old);
      //cudaDeviceSynchronize();
      set_BC_mpi_x<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
      set_BC_mpi_y<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
@@ -862,11 +882,10 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
 
      //cudaDeviceSynchronize();
      t_cur_step = (2*kt+1)*params.dt*params.tau0;
-     XYT_lin_interp<<< num_block_2d, blocksize_2d >>>(x_device, y_device, t_cur_step,\
-      Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, T_m, mac.Nx, mac.Ny, mac.Nt, fnx, fny);
-     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1, T_m );
+     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, x_device, y_device, dpsi, fnx, fny, 2*kt+1,\
+t_cur_step, Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, mac.Nx, mac.Ny, mac.Nt );
      
-     commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_old, phi_old, U_new, dpsi, phi_new);
+    // commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_old, phi_old, U_new, dpsi, phi_new);
      //cudaDeviceSynchronize();
      set_BC_mpi_x<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, phi_new, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
      set_BC_mpi_y<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, phi_new, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
