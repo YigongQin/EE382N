@@ -453,6 +453,7 @@ __global__ void getBounds(int* screenMinX, int* screenMaxX, int* screenMinY, int
     screenMaxY[circleIndex] = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
     
 }
+
 __global__ void kernelRenderSingleCircle(int circleIndex, int screenMinX, int screenMaxX, int screenMinY, int screenMaxY) {
     //index is pixel here
     
@@ -485,6 +486,44 @@ __global__ void kernelRenderSingleCircle(int circleIndex, int screenMinX, int sc
                                         invHeight * (static_cast<float>(pixelY) + 0.5f));
     shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
 }
+
+__global__ void kernelRenderSingleCircle_serial(int circleIndex, int screenMinX, int screenMaxX, int screenMinY, int screenMaxY) {
+    int grid=((screenMaxX-screenMinX)*(screenMaxY-screenMinY)+ blockDim.x - 1) / blockDim.x;
+    //index is pixel here
+    // read position and radius
+    float3 p = *(float3*)(&cuConstRendererParams.position[3*circleIndex]);
+    //float  rad = cuConstRendererParams.radius[circleIndex];
+
+    // compute the bounding box of the circle. The bound is in integer
+    // screen coordinates, so it's clamped to the edges of the screen.
+    short imageWidth = cuConstRendererParams.imageWidth;
+    short imageHeight = cuConstRendererParams.imageHeight;
+
+
+    float invWidth = 1.f / imageWidth;
+    float invHeight = 1.f / imageHeight;
+    
+    for(int i=0; i<grid; i++){
+        int offsetY=((blockIdx.x+i) * blockDim.x + threadIdx.x)/(screenMaxX-screenMinX);//0 indexed
+        int offsetX=((blockIdx.x+i) * blockDim.x + threadIdx.x)-(screenMaxX-screenMinX)*offsetY;//0 indexed
+        int pixelIndex = (screenMinY+offsetY)*cuConstRendererParams.imageWidth + screenMinX + offsetX;
+        if (pixelIndex >= cuConstRendererParams.imageWidth * cuConstRendererParams.imageHeight)
+            return;
+
+
+        
+
+        // render 1 pixel
+        int pixelY=pixelIndex/imageWidth;
+        int pixelX=pixelIndex-imageWidth*pixelY;
+        float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4*pixelIndex]);
+            
+        float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+                                            invHeight * (static_cast<float>(pixelY) + 0.5f));
+        shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -728,7 +767,7 @@ CudaRenderer::render() {
     cudaMemcpy(screenMaxY, screenMaxY_device, (numCircles)*sizeof(int), cudaMemcpyDeviceToHost);
     //printf("executed here 1\n");
     if(sceneName==CIRCLE_TEST_10K || sceneName==CIRCLE_TEST_100K){
-        int streamNum=8;
+        int streamNum=64;
         cudaStream_t stream[streamNum];
         for (int i=0; i <streamNum; i++){
         cudaStreamCreate(&stream[i]);
@@ -739,8 +778,10 @@ CudaRenderer::render() {
         int mileStone =0;
         int distance=1000;
         bool overlap=false;
+        dim3 blockDim_1(256, 1);
         for(int circleIndex=0; circleIndex<numCircles; circleIndex++){
-            dim3 gridDim(((screenMaxX[circleIndex]-screenMinX[circleIndex])*(screenMaxY[circleIndex]-screenMinY[circleIndex]) + blockDim.x - 1) / blockDim.x);
+            //dim3 gridDim(((screenMaxX[circleIndex]-screenMinX[circleIndex])*(screenMaxY[circleIndex]-screenMinY[circleIndex]) + blockDim_1.x - 1) / blockDim_1.x);
+            dim3 gridDim(1);
             double time_loop_start = CycleTimer::currentSeconds();
             for(int pairIndex=mileStone; pairIndex<circleIndex; pairIndex++){
                 if(screenMinX[circleIndex]<=screenMaxX[pairIndex] && screenMaxX[circleIndex]>=screenMinX[pairIndex]
@@ -762,7 +803,7 @@ CudaRenderer::render() {
             //     mileStone=circleIndex;
             //     cudaDeviceSynchronize();
             // }
-            kernelRenderSingleCircle<<<gridDim, blockDim, 0, stream[streamIdx]>>>(circleIndex, screenMinX[circleIndex], screenMaxX[circleIndex], screenMinY[circleIndex], screenMaxY[circleIndex]);
+            kernelRenderSingleCircle_serial<<<gridDim, blockDim_1, 0, stream[streamIdx]>>>(circleIndex, screenMinX[circleIndex], screenMaxX[circleIndex], screenMinY[circleIndex], screenMaxY[circleIndex]);
             streamIdx++;
             if(streamIdx==streamNum){
                 streamIdx=0;
