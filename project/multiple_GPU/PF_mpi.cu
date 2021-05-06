@@ -910,7 +910,7 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
   float* phi_old;// = NULL;
   float* phi_new;// = NULL;
   float* dpsi;// = NULL;
-  float* T_m;
+  //float* T_m;
   // allocate x, y, phi, psi, U related params
   int length = fnx*fny;
 
@@ -924,7 +924,7 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
   cudaMalloc((void **)&psi_new,  sizeof(float) * length);
   cudaMalloc((void **)&U_new,    sizeof(float) * length);
   cudaMalloc((void **)&dpsi,    sizeof(float) * length);
-  cudaMalloc((void **)&T_m,    sizeof(float) * length);  
+  //cudaMalloc((void **)&T_m,    sizeof(float) * length);  
 
   cudaMemcpy(x_device, x, sizeof(float) * fnx, cudaMemcpyHostToDevice);
   cudaMemcpy(y_device, y, sizeof(float) * fny, cudaMemcpyHostToDevice);
@@ -952,6 +952,21 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
   cudaMemcpy(Mgpu.Y_mac, mac.Y_mac, sizeof(float) * mac.Ny, cudaMemcpyHostToDevice); 
   cudaMemcpy(Mgpu.t_mac, mac.t_mac, sizeof(float) * mac.Nt, cudaMemcpyHostToDevice);  
   cudaMemcpy(Mgpu.T_3D, mac.T_3D, sizeof(float) * mac.Nt* mac.Nx* mac.Ny, cudaMemcpyHostToDevice);   
+
+  int T_len = mac.Nt* mac.Nx* mac.Ny;
+  cudaResourceDesc resDesc;
+  memset(&resDesc, 0, sizeof(resDesc));
+  resDesc.resType = cudaResourceTypeLinear;
+  resDesc.res.linear.devPtr = Mgpu.T_3D;
+  resDesc.res.linear.desc.f = cudaChannelFormatKindFloat;
+  resDesc.res.linear.desc.x = 32; // bits per channel
+  resDesc.res.linear.sizeInBytes = T_len*sizeof(float);
+  cudaTextureDesc texDesc;
+  memset(&texDesc, 0, sizeof(texDesc));
+  texDesc.readMode = cudaReadModeElementType;
+  cudaTextureObject_t tex=0;
+  cudaCreateTextureObject(&tex, &resDesc, &texDesc, NULL);
+
 //--
 
    int blocksize_1d = 128;
@@ -1011,9 +1026,9 @@ t_cur_step, Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, mac.Nx, mac.Ny, mac.N
   cudaFree(psi_old); cudaFree(psi_new);
   cudaFree(phi_old); cudaFree(phi_new);
   cudaFree(U_old); cudaFree(U_new);
-  cudaFree(dpsi);  cudaFree(T_m);
+  cudaFree(dpsi);  //cudaFree(T_m);
 
-
+  cudaDestroyTextureObject(tex);
 }
 
 
