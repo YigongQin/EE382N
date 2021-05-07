@@ -12,7 +12,8 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
-#include "/home1/apps/matlab/2020b/extern/include/mat.h"
+// #include "/home1/apps/matlab/2020b/extern/include/mat.h"
+#include "/usr/local/packages/matlab_2019a/extern/include/mat.h" //my workstation
 // #include <mat.h> 
 using namespace std;
 
@@ -251,11 +252,14 @@ int main(int argc, char** argv)
     //    std::cout<<Uc[i]<<" ";
     //}
     //std::cout<<std::endl;
+
     // step 3 (time marching): call the kernels Mt times
     double* phi_arr= new double[length];
     for(int i=0; i<length; i++){
          phi_arr[i] = (double) phi[i];
-    } 
+    }
+
+
     // // step 4: save the psi, phi, U to a .mat file
     MATFile *pmatFile = NULL;
     mxArray *pMxArray = NULL;
