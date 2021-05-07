@@ -22,6 +22,8 @@
 #include <thrust/device_free.h>
 #include <thrust/execution_policy.h>
 
+#include "CycleTimer.h"
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // Putting all the cuda kernels here
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -763,10 +765,10 @@ __global__ void kernelRenderAllCircle_paired_new(int* pairedNum, int* pairedCirc
         int cellIndexY=pixel_y/cellSize;
         int cellIndex=cellIndexY*cellNumX+cellIndexX;
         //int pairedCircleNum=pairedNum[cellIndex];
-        int startIndex=0;
-        for(int i=0; i<cellIndex; i++){
-            startIndex+=pairedNum[i];
-        }
+        // int startIndex=0;
+        // for(int i=0; i<cellIndex; i++){
+        //     startIndex+=pairedNum[i];
+        // }
         
         // read position and radius
         
@@ -997,8 +999,9 @@ void
 CudaRenderer::render() {
 
     // 256 threads per block is a healthy number
+     double timeStart = CycleTimer::currentSeconds();
     
-    printf("%d, %d\n", image->width, image->height);
+    //printf("%d, %d\n", image->width, image->height);
     int cellSize=32;
     int cellNumX=(image->width+cellSize-1)/cellSize;
     int cellNumY=(image->height+cellSize-1)/cellSize;
@@ -1010,7 +1013,7 @@ CudaRenderer::render() {
     dim3 gridDim_0((cellNumX+blockDim_0.x-1)/blockDim_0.x, (cellNumY+blockDim_0.y-1)/blockDim_0.y);
     countCircles<<<gridDim_0, blockDim_0>>>(pairedNum, cellSize);
     cudaDeviceSynchronize();
-    
+    double timeCountEnd = CycleTimer::currentSeconds();
     int pairedNum_host[1];
     //cudaMemcpy(pairedNum_host, pairedNum, (cellNum+1)*sizeof(int), cudaMemcpyDeviceToHost);
     // for(int i=0; i<cellNum; i++){
@@ -1019,6 +1022,8 @@ CudaRenderer::render() {
     // printf("\n");
     thrust::exclusive_scan(thrust::device, pairedNum, pairedNum+cellNum+1, pairedNum, 0);
     cudaDeviceSynchronize();
+    double timeScanEnd = CycleTimer::currentSeconds();
+
     int pair_length=0;
     // for(int i=0; i<cellNum; i++){
     //     pair_length+=pairedNum_host[i];
@@ -1029,16 +1034,17 @@ CudaRenderer::render() {
     // }
     // printf("\n");
     pair_length=pairedNum_host[0];
-    printf("pair_length=%d", pair_length);
+    //printf("pair_length=%d", pair_length);
     int *pairedCircle;
     int pairedCircle_host[pair_length];
     cudaMalloc((void**)(&pairedCircle), (pair_length)*sizeof(int));
     
     findCircles_new<<<gridDim_0, blockDim_0>>>(pairedNum, pairedCircle, cellSize);
     cudaDeviceSynchronize();
+    double timeFindEnd = CycleTimer::currentSeconds();
     cudaMemcpy(pairedCircle_host, pairedCircle, (pair_length)*sizeof(int), cudaMemcpyDeviceToHost);
 
-    printf("circles found\n");
+    //printf("circles found\n");
     // for(int i=0; i<pair_length; i++){
     //     printf("%d",pairedCircle_host[i]);
     // }
@@ -1046,7 +1052,9 @@ CudaRenderer::render() {
     dim3 blockDim(16, 16);
     dim3 gridDim((image->width + blockDim.x - 1) / blockDim.x, (image->height + blockDim.y - 1) / blockDim.y);
     //dim3 gridDim(16);
-        kernelRenderAllCircle_paired_new<<<gridDim, blockDim>>>(pairedNum, pairedCircle, cellSize);
-        //cudaDeviceSynchronize();
-    
+    kernelRenderAllCircle_paired_new<<<gridDim, blockDim>>>(pairedNum, pairedCircle, cellSize);
+    cudaDeviceSynchronize();
+    double timeEnd = CycleTimer::currentSeconds();
+    printf("count: %f\nscan: %f\nfind: %f\nrender: %f\n\n", 
+        timeCountEnd-timeStart, timeScanEnd-timeCountEnd, timeFindEnd-timeScanEnd, timeEnd-timeFindEnd);
 }

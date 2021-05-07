@@ -12,5 +12,5 @@
 module load gcc
 module load cuda
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/apps/cuda/8.0/lib64
-./render -r cuda -b 0:4 -f rgbtest_cuda -s 768 rgb
+./render -r cuda -b 0:4 -f rand100ktest_cuda rand100k
 ./checker.pl 
