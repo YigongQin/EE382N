@@ -1002,7 +1002,7 @@ CudaRenderer::render() {
      //double timeStart = CycleTimer::currentSeconds();
     
     //printf("%d, %d\n", image->width, image->height);
-    int cellSize=8;
+    int cellSize=16;
     int cellNumX=(image->width+cellSize-1)/cellSize;
     int cellNumY=(image->height+cellSize-1)/cellSize;
     int cellNum = cellNumX*cellNumY;
