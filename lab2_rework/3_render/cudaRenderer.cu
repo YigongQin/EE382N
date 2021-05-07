@@ -386,65 +386,65 @@ shadePixel(int circleIndex, float2 pixelCenter, float3 p, float4* imagePtr) {
     // END SHOULD-BE-ATOMIC REGION
 }
 
-__global__ void findCircles(int**pairedCircle, int cellSize) {
-    int cellIndexX = blockIdx.x * blockDim.x + threadIdx.x;
-    int cellIndexY = blockIdx.y * blockDim.y + threadIdx.y;
-    int cellIndex = cellIndexY*blockDim.x + cellIndexX;
-    int cellLeftBound = cellIndexX * cellSize;
-    int cellRightBound = (cellIndexX+1) * cellSize;
-    int cellUpperBound = cuConstRendererParams.imageHeight - cellIndexY * cellSize;
-    int cellLowerBound = cuConstRendererParams.imageHeight - (cellIndexY+1) * cellSize;
-    pairedCircle[cellIndex]=(int*)malloc(1*sizeof(int));
+// __global__ void findCircles(int**pairedCircle, int cellSize) {
+//     int cellIndexX = blockIdx.x * blockDim.x + threadIdx.x;
+//     int cellIndexY = blockIdx.y * blockDim.y + threadIdx.y;
+//     int cellIndex = cellIndexY*blockDim.x + cellIndexX;
+//     int cellLeftBound = cellIndexX * cellSize;
+//     int cellRightBound = (cellIndexX+1) * cellSize;
+//     int cellUpperBound = cuConstRendererParams.imageHeight - cellIndexY * cellSize;
+//     int cellLowerBound = cuConstRendererParams.imageHeight - (cellIndexY+1) * cellSize;
+//     pairedCircle[cellIndex]=(int*)malloc(1*sizeof(int));
     
-    pairedCircle[cellIndex][0]=0;
-    printf("%d", pairedCircle[cellIndex][0]);
-    int arraySize=1;
-    for(int circleIndex=0; circleIndex<cuConstRendererParams.numCircles; circleIndex++){
-        int index3 = 3 * circleIndex;
+//     pairedCircle[cellIndex][0]=0;
+//     printf("%d", pairedCircle[cellIndex][0]);
+//     int arraySize=1;
+//     for(int circleIndex=0; circleIndex<cuConstRendererParams.numCircles; circleIndex++){
+//         int index3 = 3 * circleIndex;
 
-        // read position and radius
-        float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
-        float  rad = cuConstRendererParams.radius[circleIndex];
+//         // read position and radius
+//         float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
+//         float  rad = cuConstRendererParams.radius[circleIndex];
 
-        // compute the bounding box of the circle. The bound is in integer
-        // screen coordinates, so it's clamped to the edges of the screen.
-        short imageWidth = cuConstRendererParams.imageWidth;
-        short imageHeight = cuConstRendererParams.imageHeight;
-        short minX = static_cast<short>(imageWidth * (p.x - rad));
-        short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
-        short minY = static_cast<short>(imageHeight * (p.y - rad));
-        short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
+//         // compute the bounding box of the circle. The bound is in integer
+//         // screen coordinates, so it's clamped to the edges of the screen.
+//         short imageWidth = cuConstRendererParams.imageWidth;
+//         short imageHeight = cuConstRendererParams.imageHeight;
+//         short minX = static_cast<short>(imageWidth * (p.x - rad));
+//         short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
+//         short minY = static_cast<short>(imageHeight * (p.y - rad));
+//         short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
 
-        // a bunch of clamps.  Is there a CUDA built-in for this?
-        int screenMinX= (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
-        int screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
-        int screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
-        int screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
+//         // a bunch of clamps.  Is there a CUDA built-in for this?
+//         int screenMinX= (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
+//         int screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
+//         int screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
+//         int screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
         
-        if(cellLeftBound<=screenMaxX && screenMinX<=cellRightBound && cellLowerBound<=screenMaxY && screenMinY<=cellUpperBound){
-            int numPaired = pairedCircle[cellIndex][0];
-            if(numPaired+2<=arraySize){
-                pairedCircle[cellIndex][numPaired+1]=circleIndex;
-                pairedCircle[cellIndex][0]++;
-            }
-            else{
-                int* reallocArray=(int*)malloc(2*arraySize * sizeof(int));
-                if(reallocArray){
-                    memcpy(reallocArray, pairedCircle[cellIndex], arraySize * sizeof(int));
-                    pairedCircle[cellIndex]=reallocArray;
-                    free(reallocArray);
-                    arraySize=2*arraySize;
-                    pairedCircle[cellIndex][numPaired+1]=circleIndex;
-                    pairedCircle[cellIndex][0]++;
-                }
-                else{
-                    printf("failed to realloc\n");
-                }
-            }
-        }
-    }
+//         if(cellLeftBound<=screenMaxX && screenMinX<=cellRightBound && cellLowerBound<=screenMaxY && screenMinY<=cellUpperBound){
+//             int numPaired = pairedCircle[cellIndex][0];
+//             if(numPaired+2<=arraySize){
+//                 pairedCircle[cellIndex][numPaired+1]=circleIndex;
+//                 pairedCircle[cellIndex][0]++;
+//             }
+//             else{
+//                 int* reallocArray=(int*)malloc(2*arraySize * sizeof(int));
+//                 if(reallocArray){
+//                     memcpy(reallocArray, pairedCircle[cellIndex], arraySize * sizeof(int));
+//                     pairedCircle[cellIndex]=reallocArray;
+//                     free(reallocArray);
+//                     arraySize=2*arraySize;
+//                     pairedCircle[cellIndex][numPaired+1]=circleIndex;
+//                     pairedCircle[cellIndex][0]++;
+//                 }
+//                 else{
+//                     printf("failed to realloc\n");
+//                 }
+//             }
+//         }
+//     }
 
-}
+// }
 
 __global__ void countCircles(int* pairedNum, int cellSize) {
     int cellIndexX = blockIdx.x * blockDim.x + threadIdx.x;
@@ -548,199 +548,199 @@ __global__ void findCircles_new(int* pairedNum, int* pairedCircle, int cellSize)
 // Each thread renders a circle.  Since there is no protection to
 // ensure order of update or mutual exclusion on the output image, the
 // resulting image will be incorrect.
-__global__ void kernelRenderCircles() {
+// __global__ void kernelRenderCircles() {
 
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
+//     int index = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (index >= cuConstRendererParams.numCircles)
-        return;
+//     if (index >= cuConstRendererParams.numCircles)
+//         return;
 
-    int index3 = 3 * index;
+//     int index3 = 3 * index;
 
-    // read position and radius
-    float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
-    float  rad = cuConstRendererParams.radius[index];
+//     // read position and radius
+//     float3 p = *(float3*)(&cuConstRendererParams.position[index3]);
+//     float  rad = cuConstRendererParams.radius[index];
 
-    // compute the bounding box of the circle. The bound is in integer
-    // screen coordinates, so it's clamped to the edges of the screen.
-    short imageWidth = cuConstRendererParams.imageWidth;
-    short imageHeight = cuConstRendererParams.imageHeight;
-    short minX = static_cast<short>(imageWidth * (p.x - rad));
-    short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
-    short minY = static_cast<short>(imageHeight * (p.y - rad));
-    short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
+//     // compute the bounding box of the circle. The bound is in integer
+//     // screen coordinates, so it's clamped to the edges of the screen.
+//     short imageWidth = cuConstRendererParams.imageWidth;
+//     short imageHeight = cuConstRendererParams.imageHeight;
+//     short minX = static_cast<short>(imageWidth * (p.x - rad));
+//     short maxX = static_cast<short>(imageWidth * (p.x + rad)) + 1;
+//     short minY = static_cast<short>(imageHeight * (p.y - rad));
+//     short maxY = static_cast<short>(imageHeight * (p.y + rad)) + 1;
 
-    // a bunch of clamps.  Is there a CUDA built-in for this?
-    short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
-    short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
-    short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
-    short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
+//     // a bunch of clamps.  Is there a CUDA built-in for this?
+//     short screenMinX = (minX > 0) ? ((minX < imageWidth) ? minX : imageWidth) : 0;
+//     short screenMaxX = (maxX > 0) ? ((maxX < imageWidth) ? maxX : imageWidth) : 0;
+//     short screenMinY = (minY > 0) ? ((minY < imageHeight) ? minY : imageHeight) : 0;
+//     short screenMaxY = (maxY > 0) ? ((maxY < imageHeight) ? maxY : imageHeight) : 0;
 
-    float invWidth = 1.f / imageWidth;
-    float invHeight = 1.f / imageHeight;
+//     float invWidth = 1.f / imageWidth;
+//     float invHeight = 1.f / imageHeight;
 
-    // for all pixels in the bonding box
-    for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
-        float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
-        for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
-            float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
-                                                 invHeight * (static_cast<float>(pixelY) + 0.5f));
-            shadePixel(index, pixelCenterNorm, p, imgPtr);
-            imgPtr++;
-        }
-    }
-}
+//     // for all pixels in the bonding box
+//     for (int pixelY=screenMinY; pixelY<screenMaxY; pixelY++) {
+//         float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4 * (pixelY * imageWidth + screenMinX)]);
+//         for (int pixelX=screenMinX; pixelX<screenMaxX; pixelX++) {
+//             float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+//                                                  invHeight * (static_cast<float>(pixelY) + 0.5f));
+//             shadePixel(index, pixelCenterNorm, p, imgPtr);
+//             imgPtr++;
+//         }
+//     }
+// }
 
-__global__ void kernelRenderSingleCircle(int circleIndex) {
-    //index is pixel here
-    int pixelIndex = blockIdx.x * blockDim.x + threadIdx.x;
+// __global__ void kernelRenderSingleCircle(int circleIndex) {
+//     //index is pixel here
+//     int pixelIndex = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (pixelIndex >= cuConstRendererParams.imageWidth * cuConstRendererParams.imageHeight)
-        return;
-
-
-    // read position and radius
-    float3 p = *(float3*)(&cuConstRendererParams.position[3*circleIndex]);
-    //float  rad = cuConstRendererParams.radius[circleIndex];
-
-    // compute the bounding box of the circle. The bound is in integer
-    // screen coordinates, so it's clamped to the edges of the screen.
-    short imageWidth = cuConstRendererParams.imageWidth;
-    short imageHeight = cuConstRendererParams.imageHeight;
+//     if (pixelIndex >= cuConstRendererParams.imageWidth * cuConstRendererParams.imageHeight)
+//         return;
 
 
-    float invWidth = 1.f / imageWidth;
-    float invHeight = 1.f / imageHeight;
+//     // read position and radius
+//     float3 p = *(float3*)(&cuConstRendererParams.position[3*circleIndex]);
+//     //float  rad = cuConstRendererParams.radius[circleIndex];
 
-    // render 1 pixel
-    int pixelY=pixelIndex/imageWidth;
-    int pixelX=pixelIndex-imageWidth*pixelY;
-    float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4*pixelIndex]);
+//     // compute the bounding box of the circle. The bound is in integer
+//     // screen coordinates, so it's clamped to the edges of the screen.
+//     short imageWidth = cuConstRendererParams.imageWidth;
+//     short imageHeight = cuConstRendererParams.imageHeight;
+
+
+//     float invWidth = 1.f / imageWidth;
+//     float invHeight = 1.f / imageHeight;
+
+//     // render 1 pixel
+//     int pixelY=pixelIndex/imageWidth;
+//     int pixelX=pixelIndex-imageWidth*pixelY;
+//     float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4*pixelIndex]);
         
-    float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
-                                        invHeight * (static_cast<float>(pixelY) + 0.5f));
-    shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
-}
+//     float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+//                                         invHeight * (static_cast<float>(pixelY) + 0.5f));
+//     shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
+// }
 ////////////////////////////////////////////////////////////////////////////////////////
-__global__ void kernelRenderAllCircle_grid() {
-    int grid=(cuConstRendererParams.imageWidth*cuConstRendererParams.imageHeight+(blockDim.x*gridDim.x)-1)/(blockDim.x*gridDim.x);
-    short imageWidth = cuConstRendererParams.imageWidth;
-    short imageHeight = cuConstRendererParams.imageHeight;
+// __global__ void kernelRenderAllCircle_grid() {
+//     int grid=(cuConstRendererParams.imageWidth*cuConstRendererParams.imageHeight+(blockDim.x*gridDim.x)-1)/(blockDim.x*gridDim.x);
+//     short imageWidth = cuConstRendererParams.imageWidth;
+//     short imageHeight = cuConstRendererParams.imageHeight;
 
 
-    float invWidth = 1.f / imageWidth;
-    float invHeight = 1.f / imageHeight;
-    for(int i=0; i<grid; i++){
-        //index is pixel here
-        int pixelIndex = (blockIdx.x + i*gridDim.x) * blockDim.x + threadIdx.x;
+//     float invWidth = 1.f / imageWidth;
+//     float invHeight = 1.f / imageHeight;
+//     for(int i=0; i<grid; i++){
+//         //index is pixel here
+//         int pixelIndex = (blockIdx.x + i*gridDim.x) * blockDim.x + threadIdx.x;
 
-        if (pixelIndex >= cuConstRendererParams.imageWidth * cuConstRendererParams.imageHeight)
-            return;
+//         if (pixelIndex >= cuConstRendererParams.imageWidth * cuConstRendererParams.imageHeight)
+//             return;
 
 
-        // read position and radius
+//         // read position and radius
         
-        //float  rad = cuConstRendererParams.radius[circleIndex];
+//         //float  rad = cuConstRendererParams.radius[circleIndex];
 
-        // compute the bounding box of the circle. The bound is in integer
-        // screen coordinates, so it's clamped to the edges of the screen.
+//         // compute the bounding box of the circle. The bound is in integer
+//         // screen coordinates, so it's clamped to the edges of the screen.
         
 
-        // render 1 pixel
-        int pixelY=pixelIndex/imageWidth;
-        int pixelX=pixelIndex-imageWidth*pixelY;
-        float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4*pixelIndex]);
+//         // render 1 pixel
+//         int pixelY=pixelIndex/imageWidth;
+//         int pixelX=pixelIndex-imageWidth*pixelY;
+//         float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4*pixelIndex]);
             
-        float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
-                                            invHeight * (static_cast<float>(pixelY) + 0.5f));
-        for(int circleIndex=0; circleIndex<cuConstRendererParams.numCircles; circleIndex++){
-            float3 p = *(float3*)(&cuConstRendererParams.position[3*circleIndex]);
-            shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
-        }
-    }
-}
+//         float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+//                                             invHeight * (static_cast<float>(pixelY) + 0.5f));
+//         for(int circleIndex=0; circleIndex<cuConstRendererParams.numCircles; circleIndex++){
+//             float3 p = *(float3*)(&cuConstRendererParams.position[3*circleIndex]);
+//             shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
+//         }
+//     }
+// }
 
-__global__ void kernelRenderAllCircle() {
-    short imageWidth = cuConstRendererParams.imageWidth;
-    short imageHeight = cuConstRendererParams.imageHeight;
-
-
-    float invWidth = 1.f / imageWidth;
-    float invHeight = 1.f / imageHeight;
-
-        //index is pixel here
-        int pixel_x = blockIdx.x * blockDim.x + threadIdx.x;
-        int pixel_y = blockIdx.y * blockDim.y + threadIdx.y;
-        int pixelIndex = pixel_y * imageWidth + pixel_x;
-
-        if (pixelIndex >= cuConstRendererParams.imageWidth * cuConstRendererParams.imageHeight)
-            return;
+// __global__ void kernelRenderAllCircle() {
+//     short imageWidth = cuConstRendererParams.imageWidth;
+//     short imageHeight = cuConstRendererParams.imageHeight;
 
 
-        // read position and radius
+//     float invWidth = 1.f / imageWidth;
+//     float invHeight = 1.f / imageHeight;
+
+//         //index is pixel here
+//         int pixel_x = blockIdx.x * blockDim.x + threadIdx.x;
+//         int pixel_y = blockIdx.y * blockDim.y + threadIdx.y;
+//         int pixelIndex = pixel_y * imageWidth + pixel_x;
+
+//         if (pixelIndex >= cuConstRendererParams.imageWidth * cuConstRendererParams.imageHeight)
+//             return;
+
+
+//         // read position and radius
         
-        //float  rad = cuConstRendererParams.radius[circleIndex];
+//         //float  rad = cuConstRendererParams.radius[circleIndex];
 
-        // compute the bounding box of the circle. The bound is in integer
-        // screen coordinates, so it's clamped to the edges of the screen.
+//         // compute the bounding box of the circle. The bound is in integer
+//         // screen coordinates, so it's clamped to the edges of the screen.
         
 
-        // render 1 pixel
-        int pixelY=pixelIndex/imageWidth;
-        int pixelX=pixelIndex-imageWidth*pixelY;
-        float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4*pixelIndex]);
+//         // render 1 pixel
+//         int pixelY=pixelIndex/imageWidth;
+//         int pixelX=pixelIndex-imageWidth*pixelY;
+//         float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4*pixelIndex]);
             
-        float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
-                                            invHeight * (static_cast<float>(pixelY) + 0.5f));
-        for(int circleIndex=0; circleIndex<cuConstRendererParams.numCircles; circleIndex++){
-            float3 p = *(float3*)(&cuConstRendererParams.position[3*circleIndex]);
-            shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
-        }
+//         float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+//                                             invHeight * (static_cast<float>(pixelY) + 0.5f));
+//         for(int circleIndex=0; circleIndex<cuConstRendererParams.numCircles; circleIndex++){
+//             float3 p = *(float3*)(&cuConstRendererParams.position[3*circleIndex]);
+//             shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
+//         }
     
-}
-__global__ void kernelRenderAllCircle_paired(int** pairedCircle, int cellSize) {
-    short imageWidth = cuConstRendererParams.imageWidth;
-    short imageHeight = cuConstRendererParams.imageHeight;
+// }
+// __global__ void kernelRenderAllCircle_paired(int** pairedCircle, int cellSize) {
+//     short imageWidth = cuConstRendererParams.imageWidth;
+//     short imageHeight = cuConstRendererParams.imageHeight;
 
 
-    float invWidth = 1.f / imageWidth;
-    float invHeight = 1.f / imageHeight;
+//     float invWidth = 1.f / imageWidth;
+//     float invHeight = 1.f / imageHeight;
 
-        //index is pixel here
-        int pixel_x = blockIdx.x * blockDim.x + threadIdx.x;
-        int pixel_y = blockIdx.y * blockDim.y + threadIdx.y;
-        int pixelIndex = pixel_y * imageWidth + pixel_x;
+//         //index is pixel here
+//         int pixel_x = blockIdx.x * blockDim.x + threadIdx.x;
+//         int pixel_y = blockIdx.y * blockDim.y + threadIdx.y;
+//         int pixelIndex = pixel_y * imageWidth + pixel_x;
 
-        if (pixelIndex >= cuConstRendererParams.imageWidth * cuConstRendererParams.imageHeight)
-            return;
+//         if (pixelIndex >= cuConstRendererParams.imageWidth * cuConstRendererParams.imageHeight)
+//             return;
 
-        int cellNumX=(cuConstRendererParams.imageWidth+cellSize-1)/cellSize;
-        int cellIndexX=pixel_x/cellSize;
-        int cellIndexY=pixel_y/cellSize;
-        int cellIndex=cellIndexY*cellNumX+cellIndexX;
-        int pairedCircleNum=pairedCircle[cellIndex][0];
-        // read position and radius
+//         int cellNumX=(cuConstRendererParams.imageWidth+cellSize-1)/cellSize;
+//         int cellIndexX=pixel_x/cellSize;
+//         int cellIndexY=pixel_y/cellSize;
+//         int cellIndex=cellIndexY*cellNumX+cellIndexX;
+//         int pairedCircleNum=pairedCircle[cellIndex][0];
+//         // read position and radius
         
-        //float  rad = cuConstRendererParams.radius[circleIndex];
+//         //float  rad = cuConstRendererParams.radius[circleIndex];
 
-        // compute the bounding box of the circle. The bound is in integer
-        // screen coordinates, so it's clamped to the edges of the screen.
+//         // compute the bounding box of the circle. The bound is in integer
+//         // screen coordinates, so it's clamped to the edges of the screen.
         
 
-        // render 1 pixel
-        int pixelY=pixelIndex/imageWidth;
-        int pixelX=pixelIndex-imageWidth*pixelY;
-        float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4*pixelIndex]);
+//         // render 1 pixel
+//         int pixelY=pixelIndex/imageWidth;
+//         int pixelX=pixelIndex-imageWidth*pixelY;
+//         float4* imgPtr = (float4*)(&cuConstRendererParams.imageData[4*pixelIndex]);
             
-        float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
-                                            invHeight * (static_cast<float>(pixelY) + 0.5f));
-        for(int arrayIndex=0; arrayIndex<pairedCircleNum; arrayIndex++){
-            int circleIndex = pairedCircle[cellIndex][arrayIndex];
-            float3 p = *(float3*)(&cuConstRendererParams.position[3*circleIndex]);
-            shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
-        }
+//         float2 pixelCenterNorm = make_float2(invWidth * (static_cast<float>(pixelX) + 0.5f),
+//                                             invHeight * (static_cast<float>(pixelY) + 0.5f));
+//         for(int arrayIndex=0; arrayIndex<pairedCircleNum; arrayIndex++){
+//             int circleIndex = pairedCircle[cellIndex][arrayIndex];
+//             float3 p = *(float3*)(&cuConstRendererParams.position[3*circleIndex]);
+//             shadePixel(circleIndex, pixelCenterNorm, p, imgPtr);
+//         }
     
-}
+// }
 
 __global__ void kernelRenderAllCircle_paired_new(int* pairedNum, int* pairedCircle, int cellSize) {
     short imageWidth = cuConstRendererParams.imageWidth;
@@ -1011,24 +1011,24 @@ CudaRenderer::render() {
     countCircles<<<gridDim_0, blockDim_0>>>(pairedNum, cellSize);
     cudaDeviceSynchronize();
     
-    int pairedNum_host[cellNum];
-    cudaMemcpy(pairedNum_host, pairedNum, (cellNum+1)*sizeof(int), cudaMemcpyDeviceToHost);
-    for(int i=0; i<cellNum; i++){
-        printf("%d",pairedNum_host[i]);
-    }
-    printf("\n");
+    int pairedNum_host[1];
+    //cudaMemcpy(pairedNum_host, pairedNum, (cellNum+1)*sizeof(int), cudaMemcpyDeviceToHost);
+    // for(int i=0; i<cellNum; i++){
+    //     printf("%d",pairedNum_host[i]);
+    // }
+    // printf("\n");
     thrust::exclusive_scan(thrust::device, pairedNum, pairedNum+cellNum+1, pairedNum, 0);
     cudaDeviceSynchronize();
     int pair_length=0;
     // for(int i=0; i<cellNum; i++){
     //     pair_length+=pairedNum_host[i];
     // }
-    cudaMemcpy(pairedNum_host, pairedNum, (cellNum+1)*sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(pairedNum_host, pairedNum+cellNum, (1)*sizeof(int), cudaMemcpyDeviceToHost);
     // for(int i=0; i<cellNum+1; i++){
     //     printf("%d",pairedNum_host[i]);
     // }
     // printf("\n");
-    pair_length=pairedNum_host[cellNum];
+    pair_length=pairedNum_host[0];
     printf("pair_length=%d", pair_length);
     int *pairedCircle;
     int pairedCircle_host[pair_length];
