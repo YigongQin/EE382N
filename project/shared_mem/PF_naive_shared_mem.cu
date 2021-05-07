@@ -379,14 +379,14 @@ rhs_psi_shared_mem(float* ps, float* ph, float* U, float* ps_new, float* ph_new,
         ph_new[C] = tanhf(ps_new[C]/cP.sqrt2);
         // if (C==1000){printf("%f ",ph_new[C]);}
         // if (C == 1000) printf("check data %f\n", ps_shared[local_id]);
-        // if (C == 1001) {
+        // if (C == 137) {
         //   printf("check data ps: %f and ph: %f and dpsi: %f and U: %f\n", ps_new[C], ph_new[C], dpsi[C], U[C]);
         //   // printf("block id %d ; local_id_x %d; local_id_y %d\n", block_id, local_id_x, local_id_y);
         //   // printf("block id %d ; data_addr_x %d; data_addr_y %d\n", block_id, data_addr_x, data_addr_y);
         // }
          }
   }
-  __syncthreads();
+  // __syncthreads();
 } 
 
 // U equation
@@ -420,12 +420,14 @@ rhs_U_shared_mem(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fn
 
   // find the addr of data in global memory
   // add 1 as we counter the block in inner region; - halo_left as we have halo region in this block
-  int data_addr_x = block_addr_x + 1 - halo_left + local_id_x;
+  int data_addr_x = block_addr_x + 1 + local_id_x - halo_left;
   int data_addr_y = block_addr_y + 1 - halo_bottom + local_id_y;
 
   int C= data_addr_y * fnx + data_addr_x; // place in global memory
-  int j=C/fnx; 
-  int i=C-j*fnx;
+  // int j=C/fnx; 
+  // int i=C-j*fnx;
+  int j = data_addr_y;
+  int i = data_addr_x;
 
   // update data
   // ps_shared[local_id] = ps[C];
@@ -438,19 +440,34 @@ rhs_U_shared_mem(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fn
   //   printf("check pre-loaded data\n");
   //   printf("ph: %f ; u:%f ; dpsi: %f\n", ph[C], U[C], dpsi[C]);
   // }
+  if ((i > fnx - 1) ||(i > fny - 1)) {return;}
+
+  // if (C==137){
+  //   printf("check pre-loaded data\n");
+  //   printf("local id: %d and block id: %d\n", local_id, block_id);
+  //   // printf("data_addr_x: %d and data_addr_y: %d\n", data_addr_x, data_addr_y);
+  //   // printf("i: %d and j: %d\n", i, j);
+  //   printf("ph: %f ; u:%f ; dpsi: %f\n", ph[C], U[C], dpsi[C]);
+  //   printf("ph: %f ; u:%f ; dpsi: %f\n", ph_shared[6], U_shared[6], dpsi_shared[6]);
+  //   printf("ph: %f ; u:%f ; dpsi: %f\n", ph_shared[0], U_shared[0], dpsi_shared[0]);
+  //   printf("ph: %f ; u:%f ; dpsi: %f\n", ph_shared[real_block_x+halo_left+halo_right-1], U_shared[real_block_x+halo_left+halo_right-1], dpsi_shared[real_block_x+halo_left+halo_right-1]);
+  //   printf("ph: %f ; u:%f ; dpsi: %f\n", ph_shared[(real_block_x+halo_left+halo_right)*(real_block_y+halo_bottom)], U_shared[(real_block_x+halo_left+halo_right)*(real_block_y+halo_bottom)], dpsi_shared[(real_block_x+halo_left+halo_right)*(real_block_y+halo_bottom)]);
+  //   printf("ph: %f ; u:%f ; dpsi: %f\n", ph_shared[(real_block_x+halo_left+halo_right)*(real_block_y+halo_bottom+halo_top) - 1], U_shared[(real_block_x+halo_left+halo_right)*(real_block_y+halo_bottom+halo_top) - 1], dpsi_shared[(real_block_x+halo_left+halo_right)*(real_block_y+halo_bottom+halo_top) - 1]);
+  // }
+
   int place = local_id_y * BLOCK_DIM_X + local_id_x;
   // if the points are at boundary, return
   if ( (i>0) && (i<fnx-1) && (j>0) && (j<fny-1) ) {
     if ((local_id_x>0)&& (local_id_x<BLOCK_DIM_X-1) && (local_id_y>0) && (local_id_y<BLOCK_DIM_Y-1)) {
         // find the indices of the 8 neighbors for center
         int R=place+1;
-       int L=place-1;
-       int T=place+BLOCK_DIM_X;
-       int B=place-BLOCK_DIM_X;
+        int L=place-1;
+        int T=place+BLOCK_DIM_X;
+        int B=place-BLOCK_DIM_X;
         float hi = cP.hi;
         float Dl_tilde = cP.Dl_tilde;
         float k = cP.k;
-        float nx,nz;
+        float nx, nz;
         float eps = cP.eps;
         // =============================================================
         // 1. ANISOTROPIC DIFFUSION
@@ -462,9 +479,11 @@ rhs_U_shared_mem(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fn
         float phimjp=( ph_shared[place] + ph_shared[L] + ph_shared[T-1] + ph_shared[T] ) * 0.25f;
         float phimjm=( ph_shared[place] + ph_shared[L] + ph_shared[B-1] + ph_shared[B] ) * 0.25f;
 
-        // if (C==1001){
+        // if (C==137){
         //   printf("detailed check of neighbours 3\n");
         //   printf("R: %f ; L:%f ; T: %f ; B: %f \n", phipjp, phipjm, phimjp, phimjm);
+        //   printf("R: %f ; L:%f ; T: %f ; B: %f \n", U_shared[R], U_shared[L], U_shared[T], U_shared[B]);
+        //   printf("R: %f ; L:%f ; T: %f ; B: %f \n", dpsi_shared[R], dpsi_shared[L], dpsi_shared[T], dpsi_shared[B]);
         // }
         float jat    = 0.5f*(1.0f+(1.0f-k)*U_shared[place])*(1.0f-ph_shared[place]*ph_shared[place])*dpsi_shared[place];
         /*# ============================
@@ -478,7 +497,6 @@ rhs_U_shared_mem(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fn
         
         float jat_ip = 0.5f*(1.0f+(1.0f-k)*U_shared[R])*(1.0f-ph_shared[R]*ph_shared[R])*dpsi_shared[R];	
         float UR = hi*Dl_tilde*0.5f*(2.0f - ph_shared[place] - ph_shared[R])*(U_shared[R]-U_shared[place]) + 0.5f*(jat + jat_ip)*nx;
-    	 
     	 
         /* ============================
         # left edge flux (i-1/2, j)
@@ -519,10 +537,19 @@ rhs_U_shared_mem(float* U, float* U_new, float* ph, float* dpsi, int fnx, int fn
         float jat_jm = 0.5f*(1.0f+(1.0f-k)*U_shared[B])*(1.0f-ph_shared[B]*ph_shared[B])*dpsi_shared[B];              
         float UB = hi*Dl_tilde*0.5f*(2.0f - ph_shared[place] - ph_shared[B])*(U_shared[place]-U_shared[B]) + 0.5f*(jat + jat_jm)*nz;
         
+        // if (C==137){
+        //   printf("detailed check of neighbours 4\n");
+        //   printf("UR: %f ; UL:%f ; UT: %f ; UB: %f \n", UR, UL, UT, UB);
+        // }
+
         float rhs_U = ( (UR-UL) + (UT-UB) ) * hi + cP.sqrt2 * jat;
         float tau_U = (1.0f+cP.k) - (1.0f-cP.k)*ph_shared[place];
 
         U_new[C] = U_shared[place] + cP.dt * ( rhs_U / tau_U );
+        // if (C==137){
+        //   printf("detailed check of neighbours 3\n");
+        //   printf("U: %f \n", U_new[C]);
+        // }
        }
   }
 }
@@ -681,18 +708,18 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
    for (int kt=0; kt<params.Mt/2; kt++){
    //  printf("time step %d\n",kt);
      rhs_psi_shared_mem<<< num_block_2d_s, blocksize_2d_s >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt, num_block_x, num_block_y);
-     cudaDeviceSynchronize();
+    //  cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
-     cudaDeviceSynchronize();
+    //  cudaDeviceSynchronize();
      rhs_U_shared_mem<<< num_block_2d_s, blocksize_2d_s >>>(U_old, U_new, phi_new, dpsi, fnx, fny, num_block_x, num_block_y);
-     cudaDeviceSynchronize();
+    //  cudaDeviceSynchronize();
 
      rhs_psi_shared_mem<<< num_block_2d_s, blocksize_2d_s >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1, num_block_x, num_block_y);
-     cudaDeviceSynchronize();
+    //  cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
-     cudaDeviceSynchronize();
+    //  cudaDeviceSynchronize();
      rhs_U_shared_mem<<< num_block_2d_s, blocksize_2d_s >>>(U_new, U_old, phi_old, dpsi, fnx, fny, num_block_x, num_block_y);
-     cudaDeviceSynchronize();
+    //  cudaDeviceSynchronize();
    }
    cudaDeviceSynchronize();
    double endTime = CycleTimer::currentSeconds();
