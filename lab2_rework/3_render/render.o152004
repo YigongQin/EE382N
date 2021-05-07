@@ -1,0 +1,109 @@
+Rendering to 1024x1024 image
+Loaded scene with 100000 circles
+---------------------------------------------------------
+Initializing CUDA for CudaRenderer
+Found 4 CUDA devices
+Device 0: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+Device 1: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+Device 2: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+Device 3: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+---------------------------------------------------------
+
+Running benchmark, 4 frames, beginning at frame 0 ...
+Dumping frames to rand100ktest_cuda_xxx.ppm
+Copying image data from device
+Wrote image file rand100ktest_cuda_0000.ppm
+Copying image data from device
+Wrote image file rand100ktest_cuda_0001.ppm
+Copying image data from device
+Wrote image file rand100ktest_cuda_0002.ppm
+Copying image data from device
+Wrote image file rand100ktest_cuda_0003.ppm
+Clear:    0.0715 ms
+Advance:  0.0013 ms
+Render:   14.3044 ms
+Total:    14.3772 ms
+File IO:  189.1335 ms
+
+Overall:  0.8142 sec (note units are seconds)
+
+--------------
+Running tests on c227-106.maverick2.tacc.utexas.edu
+
+--------------
+
+Scene : rgb
+Correctness passed!
+Your time : 0.1856
+Reference Time: 0.1856
+
+Scene : rgby
+Correctness passed!
+
+Scene : rand10k
+Correctness passed!
+Your time : 6.4209
+Reference Time: 2.2681
+
+Scene : rand100k
+Correctness passed!
+Your time : 68.6246
+Reference Time: 21.8079
+
+Scene : biglittle
+Correctness passed!
+Your time : 46.1117
+Reference Time: 15.5464
+
+Scene : littlebig
+Correctness passed!
+
+Scene : pattern
+Correctness passed!
+Your time : 0.7928
+Reference Time: 0.3301
+
+Scene : bouncingballs
+Correctness passed!
+
+Scene : hypnosis
+Correctness passed!
+
+Scene : fireworks
+Correctness passed!
+
+Scene : snow
+Correctness passed!
+
+Scene : snowsingle
+Correctness passed!
+Your time : 40.0213
+Reference Time: 12.2813
+
+------------
+Score table:
+------------
+-------------------------------------------------------------------------
+| Scene Name      | Fast Time (Tf)  | Your Time (T)   | Score           |
+-------------------------------------------------------------------------
+| rgb             | 0.1856          | 0.1856          | 12              |
+| rand10k         | 2.2681          | 6.4209          | 6               |
+| rand100k        | 21.8079         | 68.6246         | 6               |
+| pattern         | 0.3301          | 0.7928          | 7               |
+| snowsingle      | 12.2813         | 40.0213         | 6               |
+| biglittle       | 15.5464         | 46.1117         | 6               |
+-------------------------------------------------------------------------
+|                                   | Total score:    | 43/72           |
+-------------------------------------------------------------------------

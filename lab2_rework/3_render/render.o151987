@@ -1,0 +1,127 @@
+Error: could not open rgbtest_cuda_0001.ppm for write
+Rendering to 768x768 image
+Loaded scene with 3 circles
+---------------------------------------------------------
+Initializing CUDA for CudaRenderer
+Found 4 CUDA devices
+Device 0: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+Device 1: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+Device 2: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+Device 3: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+---------------------------------------------------------
+
+Running benchmark, 4 frames, beginning at frame 0 ...
+Dumping frames to rgbtest_cuda_xxx.ppm
+768, 768
+pair_length=736circles found
+Copying image data from device
+Wrote image file rgbtest_cuda_0000.ppm
+768, 768
+pair_length=736circles found
+Copying image data from device
+mkdir: cannot create directory ‘logs’: Disk quota exceeded
+
+--------------
+Running tests on c227-113.maverick2.tacc.utexas.edu
+
+--------------
+
+Scene : rgb
+sh: ./logs/correctness_rgb.log: No such file or directory
+Correctness failed ... Check ./logs/correctness_rgb.log
+tee: ./logs/time_rgb.log: No such file or directory
+Your time : 0.2294
+tee: ./logs/time_rgb.log: No such file or directory
+Reference Time: 0.2059
+
+Scene : rgby
+sh: ./logs/correctness_rgby.log: No such file or directory
+Correctness failed ... Check ./logs/correctness_rgby.log
+
+Scene : rand10k
+sh: ./logs/correctness_rand10k.log: No such file or directory
+Correctness failed ... Check ./logs/correctness_rand10k.log
+tee: ./logs/time_rand10k.log: No such file or directory
+Your time : 9.1783
+tee: ./logs/time_rand10k.log: No such file or directory
+Reference Time: 2.8110
+
+Scene : rand100k
+sh: ./logs/correctness_rand100k.log: No such file or directory
+Correctness failed ... Check ./logs/correctness_rand100k.log
+tee: ./logs/time_rand100k.log: No such file or directory
+Your time : 84.0848
+tee: ./logs/time_rand100k.log: No such file or directory
+Reference Time: 21.7208
+
+Scene : biglittle
+sh: ./logs/correctness_biglittle.log: No such file or directory
+Correctness failed ... Check ./logs/correctness_biglittle.log
+tee: ./logs/time_biglittle.log: No such file or directory
+Your time : 45.1428
+tee: ./logs/time_biglittle.log: No such file or directory
+Reference Time: 15.3217
+
+Scene : littlebig
+sh: ./logs/correctness_littlebig.log: No such file or directory
+Correctness failed ... Check ./logs/correctness_littlebig.log
+
+Scene : pattern
+sh: ./logs/correctness_pattern.log: No such file or directory
+Correctness failed ... Check ./logs/correctness_pattern.log
+tee: ./logs/time_pattern.log: No such file or directory
+Your time : 0.9347
+tee: ./logs/time_pattern.log: No such file or directory
+Reference Time: 0.3280
+
+Scene : bouncingballs
+sh: ./logs/correctness_bouncingballs.log: No such file or directory
+Correctness failed ... Check ./logs/correctness_bouncingballs.log
+
+Scene : hypnosis
+sh: ./logs/correctness_hypnosis.log: No such file or directory
+Correctness failed ... Check ./logs/correctness_hypnosis.log
+
+Scene : fireworks
+sh: ./logs/correctness_fireworks.log: No such file or directory
+Correctness failed ... Check ./logs/correctness_fireworks.log
+
+Scene : snow
+sh: ./logs/correctness_snow.log: No such file or directory
+Correctness failed ... Check ./logs/correctness_snow.log
+
+Scene : snowsingle
+sh: ./logs/correctness_snowsingle.log: No such file or directory
+Correctness failed ... Check ./logs/correctness_snowsingle.log
+tee: ./logs/time_snowsingle.log: No such file or directory
+Your time : 48.0383
+tee: ./logs/time_snowsingle.log: No such file or directory
+Reference Time: 12.1163
+
+------------
+Score table:
+------------
+-------------------------------------------------------------------------
+| Scene Name      | Fast Time (Tf)  | Your Time (T)   | Score           |
+-------------------------------------------------------------------------
+| rgb             | 0.2059          | 0.2294 (F)      | 0               |
+| rand10k         | 2.8110          | 9.1783 (F)      | 0               |
+| rand100k        | 21.7208         | 84.0848 (F)     | 0               |
+| pattern         | 0.3280          | 0.9347 (F)      | 0               |
+| snowsingle      | 12.1163         | 48.0383 (F)     | 0               |
+| biglittle       | 15.3217         | 45.1428 (F)     | 0               |
+-------------------------------------------------------------------------
+|                                   | Total score:    | 0/72            |
+-------------------------------------------------------------------------

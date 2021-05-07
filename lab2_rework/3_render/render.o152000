@@ -1,0 +1,129 @@
+Rendering to 1024x1024 image
+Loaded scene with 100000 circles
+---------------------------------------------------------
+Initializing CUDA for CudaRenderer
+Found 4 CUDA devices
+Device 0: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+Device 1: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+Device 2: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+Device 3: GeForce GTX 1080 Ti
+   SMs:        28
+   Global mem: 11178 MB
+   CUDA Cap:   6.1
+---------------------------------------------------------
+
+Running benchmark, 4 frames, beginning at frame 0 ...
+Dumping frames to rand100ktest_cuda_xxx.ppm
+count: 0.014178
+scan: 0.000880
+find: 0.041777
+render: 0.043645
+
+Copying image data from device
+Wrote image file rand100ktest_cuda_0000.ppm
+count: 0.012739
+scan: 0.000041
+find: 0.037137
+render: 0.039820
+
+Copying image data from device
+Wrote image file rand100ktest_cuda_0001.ppm
+count: 0.012748
+scan: 0.000041
+find: 0.037215
+render: 0.039950
+
+Copying image data from device
+Wrote image file rand100ktest_cuda_0002.ppm
+count: 0.011832
+scan: 0.000035
+find: 0.034160
+render: 0.036357
+
+Copying image data from device
+Wrote image file rand100ktest_cuda_0003.ppm
+Clear:    0.0768 ms
+Advance:  0.0012 ms
+Render:   90.6499 ms
+Total:    90.7279 ms
+File IO:  115.5299 ms
+
+Overall:  0.8251 sec (note units are seconds)
+
+--------------
+Running tests on c227-107.maverick2.tacc.utexas.edu
+
+--------------
+
+Scene : rgb
+Correctness passed!
+Your time : 0.2366
+Reference Time: 0.1820
+
+Scene : rgby
+Correctness passed!
+
+Scene : rand10k
+Correctness passed!
+Your time : 8.2430
+Reference Time: 2.2185
+
+Scene : rand100k
+Correctness passed!
+Your time : 95.5666
+Reference Time: 22.0003
+
+Scene : biglittle
+Correctness passed!
+Your time : 59.6053
+Reference Time: 15.3572
+
+Scene : littlebig
+Correctness passed!
+
+Scene : pattern
+Correctness passed!
+Your time : 1.0291
+Reference Time: 0.3322
+
+Scene : bouncingballs
+Correctness passed!
+
+Scene : hypnosis
+Correctness passed!
+
+Scene : fireworks
+Correctness passed!
+
+Scene : snow
+Correctness passed!
+
+Scene : snowsingle
+Correctness passed!
+Your time : 49.1948
+Reference Time: 12.1219
+
+------------
+Score table:
+------------
+-------------------------------------------------------------------------
+| Scene Name      | Fast Time (Tf)  | Your Time (T)   | Score           |
+-------------------------------------------------------------------------
+| rgb             | 0.1820          | 0.2366          | 10              |
+| rand10k         | 2.2185          | 8.2430          | 5               |
+| rand100k        | 22.0003         | 95.5666         | 5               |
+| pattern         | 0.3322          | 1.0291          | 6               |
+| snowsingle      | 12.1219         | 49.1948         | 5               |
+| biglittle       | 15.3572         | 59.6053         | 5               |
+-------------------------------------------------------------------------
+|                                   | Total score:    | 36/72           |
+-------------------------------------------------------------------------
