@@ -1036,13 +1036,13 @@ CudaRenderer::render() {
     pair_length=pairedNum_host[0];
     //printf("pair_length=%d", pair_length);
     int *pairedCircle;
-    int pairedCircle_host[pair_length];
+    //int pairedCircle_host[pair_length];
     cudaMalloc((void**)(&pairedCircle), (pair_length)*sizeof(int));
     
     findCircles_new<<<gridDim_0, blockDim_0>>>(pairedNum, pairedCircle, cellSize);
     // cudaDeviceSynchronize();
     // double timeFindEnd = CycleTimer::currentSeconds();
-    cudaMemcpy(pairedCircle_host, pairedCircle, (pair_length)*sizeof(int), cudaMemcpyDeviceToHost);
+    //cudaMemcpy(pairedCircle_host, pairedCircle, (pair_length)*sizeof(int), cudaMemcpyDeviceToHost);
 
     //printf("circles found\n");
     // for(int i=0; i<pair_length; i++){
