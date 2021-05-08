@@ -62,6 +62,7 @@ struct GlobalConstants {
 };
 
 void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
+void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U, int* tipPos, float* cellNum);
 
 
 // add function for easy retrieving params
@@ -243,8 +244,9 @@ int main(int argc, char** argv)
     //    std::cout<<phi[i]<<" ";
     //}
     //std::cout<<std::endl;
-
-    setup(params, length_x, length_y, x, y, phi, psi, Uc);
+    int tipPos[params.Mt];
+    float cellNum[params.Mt];
+    my_setup(params, length_x, length_y, x, y, phi, psi, Uc, tipPos, cellNum);
 
     //std::cout<<"y= ";
     //for(int i=0+length_y; i<2*length_y; i++){
