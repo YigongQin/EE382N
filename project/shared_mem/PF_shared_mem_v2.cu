@@ -389,7 +389,416 @@ rhs_psi_shared_mem(float* ps, float* ph, float* U, float* ps_new, float* ph_new,
         // }
          }
   }
+  // __syncthreads();
+} 
+
+// psi & phi equation: two dimensions
+// merge set BC func into this func
+__global__ void
+rhs_psi_shared_mem_BC(float* ps, float* ph, float* U, float* ps_new, float* ph_new, \
+        float* y, float* dpsi, int fnx, int fny, int nt, int num_block_x, int num_block_y){
+  // each CUDA theard block compute one grid(32*32)
+
+  // memory access is from global and also not continous which cannot reach the max bandwidth(memory colaseing)
+  // add a shared memory version to store the neighbours data: ps and ph
+  // clare shared memory for time tiling
+  // we have extra (nx+2)(ny+2) size of space to load
+  int halo_left   = 1;
+  int halo_right  = 1;
+  int halo_top    = 1;
+  int halo_bottom = 1;
+  int real_block_x = BLOCK_DIM_X - halo_left - halo_right;
+  int real_block_y = BLOCK_DIM_Y - halo_top  - halo_bottom;
+
+  // load (32+2)*(32+2) daat from mem
+  __shared__ float ps_shared[(BLOCK_DIM_Y)*(BLOCK_DIM_X)];
+  __shared__ float ph_shared[(BLOCK_DIM_Y)*(BLOCK_DIM_X)];
+  __shared__ float U_shared[(BLOCK_DIM_Y)*(BLOCK_DIM_X)];
+  __shared__ float dpsi_shared[(BLOCK_DIM_Y)*(BLOCK_DIM_X)];
+  // need locate new shared_mem for updating U if we also merge U into this
+  __shared__ float ps_shared_new[(BLOCK_DIM_Y)*(BLOCK_DIM_X)];
+  __shared__ float ph_shared_new[(BLOCK_DIM_Y)*(BLOCK_DIM_X)];
+  __shared__ float U_shared_new[(BLOCK_DIM_Y)*(BLOCK_DIM_X)];
+  __shared__ float dpsi_shared_new[(BLOCK_DIM_Y)*(BLOCK_DIM_X)];
+  
+  // each thread --> one data in one enlarged block
+  int local_id = threadIdx.x; //local id -> sava to shared mem
+  int local_id_x = local_id % BLOCK_DIM_X;
+  int local_id_y = local_id / BLOCK_DIM_X;
+  
+  // obtain the block id in shrinked region
+  int block_id = blockIdx.x; // 0~num_block_x*num_block_y 
+  int block_id_x = block_id % num_block_x;
+  int block_id_y = block_id / num_block_x;
+  
+  // this is the addr in inner region without considering the BC
+  int block_addr_x = block_id_x * real_block_x;
+  int block_addr_y = block_id_y * real_block_y;
+
+  // find the addr of data in global memory
+  // add 1 as we counter the block in inner region; - halo_left as we have halo region in this block
+  int data_addr_x = block_addr_x + 1 - halo_left + local_id_x;
+  int data_addr_y = block_addr_y + 1 - halo_bottom + local_id_y;
+
+  int C= data_addr_y * fnx + data_addr_x; // place in global memory
+  int j = data_addr_y;
+  int i = data_addr_x;
+
+  // load data into shared mem for old values
+  ps_shared[local_id] = ps[C];
+  ph_shared[local_id] = ph[C];
+  U_shared[local_id]  = U[C];
+  dpsi_shared[local_id]  = dpsi[C];
+
   __syncthreads();
+  // return if the id exceeds the true region
+  if ((i > fnx - 1) ||(i > fny - 1)) {return;}
+  // if (C==1001){
+  //   printf("check data 1: %f\n", ps[C]);
+  // }
+
+  // if (local_id == 0) printf("check data %f", ps_shared[local_id]);
+  
+  // compute based on the shared memory, skip if we are at the boundary
+  int place = local_id_y * BLOCK_DIM_X + local_id_x;
+  // if the points are at boundary, return
+  // two levels of retunr: global and local region
+  if ( (i>0) && (i<fnx-1) && (j>0) && (j<fny-1) ) {
+      if ((local_id_x>0)&& (local_id_x<BLOCK_DIM_X-1) && (local_id_y>0) && (local_id_y<BLOCK_DIM_Y-1)) {
+       // find the indices of the 8 neighbors for center
+      //  if (C==1000){printf("find");}
+       int R=place+1;
+       int L=place-1;
+       int T=place+BLOCK_DIM_X;
+       int B=place-BLOCK_DIM_X;
+      //  if (C==1001){
+      //    printf("detailed check of neighbours\n");
+      //    printf("R: %d ; L:%d ; T: %d ; B: %d \n", R, L, T, B);
+      //    printf("R: %f ; L:%f ; T: %f ; B: %f \n", ps_shared[R], ps_shared[L], ps_shared[T], ps_shared[B]);
+      //    printf("R: %f ; L:%f ; T: %f ; B: %f \n", ps_shared[R], ps_shared[L], ps_shared[T+1], ps_shared[B]);
+      //  }
+        // =============================================================
+        // 1. ANISOTROPIC DIFFUSION
+        // =============================================================
+
+        // these ps's are defined on cell centers
+        float psipjp=( ps_shared[place] + ps_shared[R] + ps_shared[T] + ps_shared[T+1] ) * 0.25f;
+        float psipjm=( ps_shared[place] + ps_shared[R] + ps_shared[B] + ps_shared[B+1] ) * 0.25f;
+        float psimjp=( ps_shared[place] + ps_shared[L] + ps_shared[T-1] + ps_shared[T] ) * 0.25f;
+        float psimjm=( ps_shared[place] + ps_shared[L] + ps_shared[B-1] + ps_shared[B] ) * 0.25f;
+
+        float phipjp=( ph_shared[place] + ph_shared[R] + ph_shared[T] + ph_shared[T+1] ) * 0.25f;
+        float phipjm=( ph_shared[place] + ph_shared[R] + ph_shared[B] + ph_shared[B+1] ) * 0.25f;
+        float phimjp=( ph_shared[place] + ph_shared[L] + ph_shared[T-1] + ph_shared[T] ) * 0.25f;
+        float phimjm=( ph_shared[place] + ph_shared[L] + ph_shared[B-1] + ph_shared[B] ) * 0.25f;
+        
+        // if (C==1001){
+        //   printf("detailed check of neighbours 2\n");
+        //   printf("R: %f ; L:%f ; T: %f ; B: %f \n", psipjp, psipjm, psimjp, psimjm);
+        // }
+
+        // ============================
+        // right edge flux
+        // ============================
+        float psx = ps_shared[R]-ps_shared[place];
+        float psz = psipjp - psipjm;
+        float phx = ph_shared[R]-ph_shared[place];
+        float phz = phipjp - phipjm;
+
+        float A  = atheta( phx,phz);
+        float Ap = aptheta(phx,phz);
+        float JR = A * ( A*psx - Ap*psz );
+        
+        // ============================
+        // left edge flux
+        // ============================
+        psx = ps_shared[place]-ps_shared[L];
+        psz = psimjp - psimjm;
+        phx = ph_shared[place]-ph_shared[L];
+        phz = phimjp - phimjm; 
+
+        A  = atheta( phx,phz);
+        Ap = aptheta(phx,phz);
+        float JL = A * ( A*psx - Ap*psz );
+
+        // ============================
+        // top edge flux
+        // ============================
+        psx = psipjp - psimjp;
+        psz = ps_shared[T]-ps_shared[place];
+        phx = phipjp - phimjp;
+        phz = ph_shared[T]-ph_shared[place];
+
+        A  = atheta( phx,phz);
+        Ap = aptheta(phx,phz);
+        float JT = A * ( A*psz + Ap*psx );
+
+        // ============================
+        // bottom edge flux
+        // ============================
+        psx = psipjm - psimjm;
+        psz = ps_shared[place]-ps_shared[B];
+        phx = phipjm - phimjm;
+        phz = ph_shared[place]-ph_shared[B];
+
+        A  = atheta( phx,phz);
+        Ap = aptheta(phx,phz);
+        float JB = A * ( A*psz + Ap*psx );
+
+        // if (C==1001){
+        //   printf("detailed check of neighbours 3\n");
+        //   printf("R: %f ; L:%f ; T: %f ; B: %f \n", JR, JL, JT, JB);
+        // }
+         /*# =============================================================
+        #
+        # 2. EXTRA TERM: sqrt2 * atheta**2 * phi * |grad psi|^2
+        #
+        # =============================================================
+        # d(phi)/dx  d(psi)/dx d(phi)/dz  d(psi)/dz at nodes (i,j)*/
+        float phxn = ( ph_shared[R] - ph_shared[L] ) * 0.5f;
+        float phzn = ( ph_shared[T] - ph_shared[B] ) * 0.5f;
+        float psxn = ( ps_shared[R] - ps_shared[L] ) * 0.5f;
+        float pszn = ( ps_shared[T] - ps_shared[B] ) * 0.5f;
+
+        float A2 = atheta(phxn,phzn);
+        A2 = A2*A2;
+        float gradps2 = (psxn)*(psxn) + (pszn)*(pszn);
+        float extra =  -cP.sqrt2 * A2 * ph_shared[place] * gradps2;
+
+        /*# =============================================================
+        #
+        # 3. double well (transformed): sqrt2 * phi + nonlinear terms
+        #
+        # =============================================================*/
+
+        float Up = (y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
+
+        float rhs_psi = ((JR-JL) + (JT-JB) + extra) * cP.hi*cP.hi + \
+                   cP.sqrt2*ph_shared[place] - cP.lamd*(1.0f-ph_shared[place]*ph_shared[place])*cP.sqrt2*(U_shared[place] + Up);
+
+        /*# =============================================================
+        #
+        # 4. dpsi/dt term
+        #
+        # =============================================================*/
+        float tp = (1.0f-(1.0f-cP.k)*Up);
+        float tau_psi;
+        if (tp >= cP.k){tau_psi = tp*A2;}
+               else {tau_psi = cP.k*A2;}
+        
+        dpsi_shared_new[place] = rhs_psi / tau_psi; 
+        
+        ps_shared_new[place] = ps_shared[place] +  cP.dt * dpsi_shared_new[place];
+        ph_shared_new[place] = tanhf(ps_shared_new[place]/cP.sqrt2);
+        // if (C==1000){printf("%f ",ph_new[C]);}
+        // if (C == 1000) printf("check data %f\n", ps_shared[local_id]);
+        // if (C == 137) {
+        //   printf("check data ps: %f and ph: %f and dpsi: %f and U: %f\n", ps_new[C], ph_new[C], dpsi[C], U[C]);
+        //   // printf("block id %d ; local_id_x %d; local_id_y %d\n", block_id, local_id_x, local_id_y);
+        //   // printf("block id %d ; data_addr_x %d; data_addr_y %d\n", block_id, data_addr_x, data_addr_y);
+        // }
+         }
+  }
+  __syncthreads();
+
+  // write back
+  // need write back ps ph dpsi; 
+  // U is not updated such that we don't need write back
+  // core data can be saved back safely
+  // but BC data need to be very careful
+  // write the core data back
+  if ( (i>0) && (i<fnx-1) && (j>0) && (j<fny-1) ) {
+    if ((local_id_x>0)&& (local_id_x<BLOCK_DIM_X-1) && (local_id_y>0) && (local_id_y<BLOCK_DIM_Y-1)) {
+      ps_new[C] = ps_shared_new[place];
+      ph_new[C] = ph_shared_new[place];
+      dpsi[C]   = dpsi_shared_new[place];
+    }
+  }
+  __syncthreads();
+  // // update BC
+  // // need update BC of ps ph dpsi and U
+  // // bottom line
+  if ((j == 0)){
+    // if(i == 0){
+    //   // left bottom point
+    //   ps_new[C] = ps_shared_new[place + 2 + 2*BLOCK_DIM_X];
+    //   ph_new[C] = ph_shared_new[place + 2 + 2*BLOCK_DIM_X];
+    //   dpsi[C] = dpsi_shared_new[place + 2 + 2*BLOCK_DIM_X];
+    //   U[C] = U_shared[place + 2 + 2*BLOCK_DIM_X];
+    //   // printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C]);
+    //   // printf("check global addr(%d) data ph at local id: %d is %f\n", C, place, ph_new[C]);
+    //   // printf("check global addr(%d) data U  at local id: %d is %f\n", C, place, U[C]);
+    //   // printf("check global addr(%d) data dpsi at local id: %d is %f\n", C, place, dpsi[C]);
+    // }
+    if ((local_id_x>0) && (local_id_x<BLOCK_DIM_X-1)){
+      // cut corners
+      ps_shared_new[place] = ps_shared_new[place + 2*BLOCK_DIM_X];
+      ph_shared_new[place] = ph_shared_new[place + 2*BLOCK_DIM_X];
+      dpsi_shared_new[place]   = dpsi_shared_new[place + 2*BLOCK_DIM_X];
+      U_shared[place] = U_shared[place + 2*BLOCK_DIM_X];
+      
+      ps_new[C] = ps_shared_new[place + 2*BLOCK_DIM_X];
+      ph_new[C] = ph_shared_new[place + 2*BLOCK_DIM_X];
+      dpsi[C]   = dpsi_shared_new[place + 2*BLOCK_DIM_X];
+      U[C] = U_shared[place + 2*BLOCK_DIM_X];
+
+      // if (i == 130){
+      //   printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C]);
+      //   printf("check global addr(%d) data ph at local id: %d is %f\n", C, place, ph_new[C]);
+      //   printf("check global addr(%d) data U  at local id: %d is %f\n", C, place, U[C]);
+      //   printf("check global addr(%d) data dpsi at local id: %d is %f\n", C, place, dpsi[C]);
+      // }
+    }
+  }
+  // up line
+  if ((j == fny - 1)){
+    // printf("we are here");
+    // if(i == fnx - 1){
+    //   // printf("we are here");
+    //   // right top point
+    //   ps_new[C] = ps_shared_new[place - 2 - 2*BLOCK_DIM_X];
+    //   ph_new[C] = ph_shared_new[place - 2 - 2*BLOCK_DIM_X];
+    //   dpsi[C] = dpsi_shared_new[place - 2 - 2*BLOCK_DIM_X];
+    //   U[C] = U_shared[place - 2 - 2*BLOCK_DIM_X];
+    //   printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C]);
+    //   // printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C - 2 - 2*fnx]);
+    //   // printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C - 2]);
+    //   printf("check global addr(%d) data ph at local id: %d is %f\n", C, place, ph_new[C]);
+    //   printf("check global addr(%d) data U  at local id: %d is %f\n", C, place, U[C]);
+    //   printf("check global addr(%d) data dpsi at local id: %d is %f\n", C, place, dpsi[C]);
+    // }
+    if ((local_id_x>0)&& (local_id_x<BLOCK_DIM_X-1)){
+      ps_shared_new[place] = ps_shared_new[place - 2*BLOCK_DIM_X];
+      ph_shared_new[place] = ph_shared_new[place - 2*BLOCK_DIM_X];
+      dpsi_shared_new[place]   = dpsi_shared_new[place - 2*BLOCK_DIM_X];
+      U_shared[place] = U_shared[place - 2*BLOCK_DIM_X];
+      // cut corners
+      ps_new[C] = ps_shared_new[place - 2*BLOCK_DIM_X];
+      ph_new[C] = ph_shared_new[place - 2*BLOCK_DIM_X];
+      dpsi[C] = dpsi_shared_new[place - 2*BLOCK_DIM_X];
+      U[C] = U_shared[place - 2*BLOCK_DIM_X];
+    }
+  }
+  // left line
+  if ((i == 0)){
+    // if(j == fny - 1){
+    //   // printf("we are here");
+    //   // left top point
+    //   ps_new[C] = ps_shared_new[place + 2 - 2*BLOCK_DIM_X];
+    //   ph_new[C] = ph_shared_new[place + 2 - 2*BLOCK_DIM_X];
+    //   dpsi[C] = dpsi_shared_new[place + 2 - 2*BLOCK_DIM_X];
+    //   U[C] = U_shared[place + 2 - 2*BLOCK_DIM_X];
+    //   // printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C]);
+    //   // printf("check global addr(%d) data ph at local id: %d is %f\n", C, place, ph_new[C]);
+    //   // printf("check global addr(%d) data U  at local id: %d is %f\n", C, place, U[C]);
+    //   // printf("check global addr(%d) data dpsi at local id: %d is %f\n", C, place, dpsi[C]);
+    // }
+    if ((local_id_y>0) && (local_id_y<BLOCK_DIM_Y-1)){
+      ps_shared_new[place] = ps_shared_new[place + 2];
+      ph_shared_new[place] = ph_shared_new[place + 2];
+      dpsi_shared_new[place]   = dpsi_shared_new[place + 2];
+      U_shared[place] = U_shared[place + 2];
+      // cut corners
+      ps_new[C] = ps_shared_new[place + 2];
+      ph_new[C] = ph_shared_new[place + 2];
+      dpsi[C] = dpsi_shared_new[place + 2];
+      U[C] = U_shared[place + 2];
+    }
+    
+  }
+  // right line
+  if ((i == fnx - 1)){
+    // if(j == 0){
+    //   // right bottom point
+    //   ps_new[C] = ps_shared_new[place - 2 + 2*BLOCK_DIM_X];
+    //   ph_new[C] = ph_shared_new[place - 2 + 2*BLOCK_DIM_X];
+    //   dpsi[C] = dpsi_shared_new[place - 2 + 2*BLOCK_DIM_X];
+    //   U[C] = U_shared[place - 2 + 2*BLOCK_DIM_X];
+    //   // printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C]);
+    //   // printf("check global addr(%d) data ph at local id: %d is %f\n", C, place, ph_new[C]);
+    //   // printf("check global addr(%d) data U  at local id: %d is %f\n", C, place, U[C]);
+    //   // printf("check global addr(%d) data dpsi at local id: %d is %f\n", C, place, dpsi[C]);
+    // }
+    if ((local_id_y>0) && (local_id_y<BLOCK_DIM_Y-1)){
+      ps_shared_new[place] = ps_shared_new[place - 2];
+      ph_shared_new[place] = ph_shared_new[place - 2];
+      dpsi_shared_new[place]   = dpsi_shared_new[place - 2];
+      U_shared[place] = U_shared[place - 2];
+      // cut corners
+      ps_new[C] = ps_shared_new[place - 2];
+      ph_new[C] = ph_shared_new[place - 2];
+      dpsi[C] = dpsi_shared_new[place - 2];
+      U[C] = U_shared[place - 2];
+    }
+  }
+  __syncthreads();
+
+  // at last we update corners
+  if ((j == 0)){
+    if(i == 0){
+      // printf("we are at LB");
+      // left bottom point
+      ps_new[C] = ps_shared_new[place + 2 + 2*BLOCK_DIM_X];
+      ph_new[C] = ph_shared_new[place + 2 + 2*BLOCK_DIM_X];
+      dpsi[C] = dpsi_shared_new[place + 2 + 2*BLOCK_DIM_X];
+      U[C] = U_shared[place + 2 + 2*BLOCK_DIM_X];
+      // printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C]);
+      // printf("check global addr(%d) data ph at local id: %d is %f\n", C, place, ph_new[C]);
+      // printf("check global addr(%d) data U  at local id: %d is %f\n", C, place, U[C]);
+      // printf("check global addr(%d) data dpsi at local id: %d is %f\n", C, place, dpsi[C]);
+    }
+  }
+
+  if ((j == fny - 1)){
+    // printf("we are here");
+    if(i == fnx - 1){
+      // printf("we are at RT");
+      // right top point
+      // ps_new[C] = ps_shared_new[place - 2 - 2*BLOCK_DIM_X];
+      // ph_new[C] = ph_shared_new[place - 2 - 2*BLOCK_DIM_X];
+      // dpsi[C] = dpsi_shared_new[place - 2 - 2*BLOCK_DIM_X];
+      // U[C] = U_shared[place - 2 - 2*BLOCK_DIM_X];
+      ps_new[C] = ps_shared_new[place - 2- 2*BLOCK_DIM_X];
+      ph_new[C] = ph_shared_new[place - 2- 2*BLOCK_DIM_X];
+      dpsi[C] = dpsi_shared_new[place - 2- 2*BLOCK_DIM_X];
+      U[C] = U_shared[place - 2];
+      // printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C]);
+      // // printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C - 2 - 2*fnx]);
+      // // printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C - 2]);
+      // printf("check global addr(%d) data ph at local id: %d is %f\n", C, place, ph_new[C]);
+      // printf("check global addr(%d) data U  at local id: %d is %f\n", C, place, U[C]);
+      // printf("check global addr(%d) data dpsi at local id: %d is %f\n", C, place, dpsi[C]);
+    }
+  }
+  if ((i == fnx - 1)){
+    if(j == 0){
+      // printf("we are at RB");
+      // right bottom point
+      ps_new[C] = ps_shared_new[place - 2 + 2*BLOCK_DIM_X];
+      ph_new[C] = ph_shared_new[place - 2 + 2*BLOCK_DIM_X];
+      dpsi[C] = dpsi_shared_new[place - 2 + 2*BLOCK_DIM_X];
+      U[C] = U_shared[place - 2 + 2*BLOCK_DIM_X];
+      // printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C]);
+      // printf("check global addr(%d) data ph at local id: %d is %f\n", C, place, ph_new[C]);
+      // printf("check global addr(%d) data U  at local id: %d is %f\n", C, place, U[C]);
+      // printf("check global addr(%d) data dpsi at local id: %d is %f\n", C, place, dpsi[C]);
+    }
+  }
+  if ((i == 0)){
+    if(j == fny - 1){
+        // printf("we are at LT");
+        // left top point
+        ps_new[C] = ps_shared_new[place + 2 - 2*BLOCK_DIM_X];
+        ph_new[C] = ph_shared_new[place + 2 - 2*BLOCK_DIM_X];
+        dpsi[C] = dpsi_shared_new[place + 2 - 2*BLOCK_DIM_X];
+        U[C] = U_shared[place + 2 - 2*BLOCK_DIM_X];
+        // printf("check global addr(%d) data ps at local id: %d is %f\n", C, place, ps_new[C]);
+        // printf("check global addr(%d) data ph at local id: %d is %f\n", C, place, ph_new[C]);
+        // printf("check global addr(%d) data U  at local id: %d is %f\n", C, place, U[C]);
+        // printf("check global addr(%d) data dpsi at local id: %d is %f\n", C, place, dpsi[C]);
+      }
+  }
+
 } 
 
 // U equation
@@ -429,8 +838,8 @@ rhs_U_shared_mem_ex(float* U, float* U_new, float* ph, float* dpsi, int fnx, int
   int data_addr_y = block_addr_y + 1 + local_id_y - halo_bottom;
 
   int C= data_addr_y * fnx + data_addr_x; // place in global memory
-  int j=C/fnx; 
-  int i=C-j*fnx;
+  int j = data_addr_y;
+  int i = data_addr_x;
 
   // update data into shared mem
   int place = local_id_y * (BLOCK_DIM_X+HALO_RIGHT+HALO_LEFT) + local_id_x;
@@ -851,6 +1260,8 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
   cudaMalloc((void **)&U_new,    sizeof(float) * length);
   cudaMalloc((void **)&dpsi,    sizeof(float) * length);
 
+  float * psi_check = new float[length];
+
   // set initial params
   cudaMemcpy(x_device, x, sizeof(float) * fnx, cudaMemcpyHostToDevice);
   cudaMemcpy(y_device, y, sizeof(float) * fny, cudaMemcpyHostToDevice);
@@ -894,20 +1305,43 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
 
    for (int kt=0; kt<params.Mt/2; kt++){
    //  printf("time step %d\n",kt);
-     rhs_psi_shared_mem<<< num_block_2d_s, blocksize_2d_s >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt, num_block_x, num_block_y);
+    //  rhs_psi_shared_mem<<< num_block_2d_s, blocksize_2d_s >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt, num_block_x, num_block_y);
+     rhs_psi_shared_mem_BC<<< num_block_2d_s, blocksize_2d_s >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt, num_block_x, num_block_y);
+      // cudaDeviceSynchronize();
+    //  set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
     //  cudaDeviceSynchronize();
-     set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
-    //  cudaDeviceSynchronize();
-    //  rhs_U_shared_mem<<< num_block_2d_s, blocksize_2d_s >>>(U_old, U_new, phi_new, dpsi, fnx, fny, num_block_x, num_block_y);
-    rhs_U_shared_mem_ex<<< num_block_2d_s2, blocksize_2d_s2 >>>(U_old, U_new, phi_new, dpsi, fnx, fny, num_block_x2, num_block_y2);
+     cudaMemcpy(psi_check, psi_new, sizeof(float) * length, cudaMemcpyDeviceToHost);
+    //  printf("check data at     0+20: %f\n", psi_check[0+20]);
+    //  printf("check data at   130+fnx*2: %f\n", psi_check[130+fnx*2]);
+    //  printf("check data at 67334-fnx*2: %f\n", psi_check[67334-fnx*2]);
+    //  printf("check data at 67464-20: %f\n", psi_check[67464-20]);
+    //  printf("\n"); 
+    printf("Iter %d\n", kt);
+     printf("check data at     0: %f\n", psi_check[0]);
+     printf("check data at     0+2: %f\n", psi_check[0+2]);
+     printf("check data at     0+2fnx*2: %f\n", psi_check[0+2*fnx]);
+     printf("check data at     130: %f\n", psi_check[130]);
+     printf("check data at     130-2: %f\n", psi_check[130-2]);
+     printf("check data at     130+2fnx*2: %f\n", psi_check[130+2*fnx]);
+     printf("check data at     67334: %f\n", psi_check[67334]);
+     printf("check data at     67334+2: %f\n", psi_check[67334+2]);
+     printf("check data at     67334-2fnx*2: %f\n", psi_check[67334-2*fnx]);
+     printf("check data at     67464: %f\n", psi_check[67464]);
+     printf("check data at     67464-2: %f\n", psi_check[67464-2]);
+     printf("check data at     67464-2fnx*2: %f\n", psi_check[67464-2*fnx]);
+     printf("\n"); 
+    
+    rhs_U_shared_mem<<< num_block_2d_s, blocksize_2d_s >>>(U_old, U_new, phi_new, dpsi, fnx, fny, num_block_x, num_block_y);
+    // rhs_U_shared_mem_ex<<< num_block_2d_s2, blocksize_2d_s2 >>>(U_old, U_new, phi_new, dpsi, fnx, fny, num_block_x2, num_block_y2);
     //  cudaDeviceSynchronize();
 
      rhs_psi_shared_mem<<< num_block_2d_s, blocksize_2d_s >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1, num_block_x, num_block_y);
+    //  rhs_psi_shared_mem_BC<<< num_block_2d_s, blocksize_2d_s >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1, num_block_x, num_block_y);
     //  cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
     //  cudaDeviceSynchronize();
-    //  rhs_U_shared_mem<<< num_block_2d_s, blocksize_2d_s >>>(U_new, U_old, phi_old, dpsi, fnx, fny, num_block_x, num_block_y);
-     rhs_U_shared_mem_ex<<< num_block_2d_s2, blocksize_2d_s2 >>>(U_new, U_old, phi_old, dpsi, fnx, fny, num_block_x2, num_block_y2);
+     rhs_U_shared_mem<<< num_block_2d_s, blocksize_2d_s >>>(U_new, U_old, phi_old, dpsi, fnx, fny, num_block_x, num_block_y);
+    //  rhs_U_shared_mem_ex<<< num_block_2d_s2, blocksize_2d_s2 >>>(U_new, U_old, phi_old, dpsi, fnx, fny, num_block_x2, num_block_y2);
     //  cudaDeviceSynchronize();
    }
    cudaDeviceSynchronize();
