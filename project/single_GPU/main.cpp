@@ -12,7 +12,9 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
-#include "/home1/apps/matlab/2020b/extern/include/mat.h"
+#include <stdexcept>
+#include <algorithm>
+#include <iterator>
 // #include <mat.h> 
 using namespace std;
 
@@ -252,22 +254,11 @@ int main(int argc, char** argv)
     //}
     //std::cout<<std::endl;
     // step 3 (time marching): call the kernels Mt times
-    double* phi_arr= new double[length];
-    for(int i=0; i<length; i++){
-         phi_arr[i] = (double) phi[i];
-    } 
-    // // step 4: save the psi, phi, U to a .mat file
-    MATFile *pmatFile = NULL;
-    mxArray *pMxArray = NULL;
-    pmatFile = matOpen("out.mat","w");
-    pMxArray = mxCreateDoubleMatrix(length_x, length_y, mxREAL);
-    mxSetData(pMxArray, phi_arr);
-    matPutVariable(pmatFile, "phi", pMxArray);
-    //mxSetData(pMxArray, phi);
-    //matPutVariable(pmatFile, "phi", pMxArray);
-    //mxSetData(pMxArray, U);
-    //matPutVariable(pmatFile, "U", pMxArray);
-    matClose(pmatFile);
+    ofstream out( "data.csv" );
+    out.precision(5);
+    //out << phi << "\n";
+    copy( phi, phi + length, ostream_iterator<float>( out, "\n" ) );
+
     delete[] phi;
     delete[] Uc;
     delete[] psi;
