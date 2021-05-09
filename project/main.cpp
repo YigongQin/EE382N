@@ -62,7 +62,7 @@ struct GlobalConstants {
 };
 
 void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
-void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U, int* tipPos, float* cellNum);
+void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U, int* tipPos, float* cellNum, float* asc);
 
 
 // add function for easy retrieving params
@@ -139,7 +139,6 @@ int main(int argc, char** argv)
 
     // Close the file
     parseFile.close();
-    
     // calculate the parameters
     params.lT = params.c_infm*( 1.0/params.k-1 )/params.G;//       # thermal length           um
     params.lamd = 5*sqrt(2.0)/8*params.W0/params.d0;//     # coupling constant
@@ -246,7 +245,8 @@ int main(int argc, char** argv)
     //std::cout<<std::endl;
     int tipPos[params.Mt];
     float cellNum[params.Mt];
-    my_setup(params, length_x, length_y, x, y, phi, psi, Uc, tipPos, cellNum);
+    float asc[params.Mt];
+    my_setup(params, length_x, length_y, x, y, phi, psi, Uc, tipPos, cellNum, asc);
 
     //std::cout<<"y= ";
     //for(int i=0+length_y; i<2*length_y; i++){
