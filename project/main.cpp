@@ -246,11 +246,11 @@ int main(int argc, char** argv)
     int boxNum=4;
     int boxSizeX[boxNum];
     for(int i=0; i<boxNum; i++){
-        boxSizeX[i]=params.nx/boxNum - i;
+        boxSizeX[i]=i+1;
     }
     int boxSizeY[boxNum];
     for(int i=0; i<boxNum; i++){
-        boxSizeY[i]=params.ny/boxNum - i;
+        boxSizeY[i]=boxNum-i;
     }
     int boxPosX[boxNum];
     int boxPosY[boxNum];
