@@ -995,7 +995,7 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, x_device, y_device, dpsi, fnx, fny, 2*kt,\
 t_cur_step, Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, mac.Nx, mac.Ny, mac.Nt );
      //print2d(phi_old,fnx,fny);
-     commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_new, phi_new, U_old, dpsi, phi_old);
+     //if ( (2*kt+2)%params.ha_wd==0 )commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_new, phi_new, U_old, dpsi, phi_old);
      //cudaDeviceSynchronize();
      set_BC_mpi_x<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
      set_BC_mpi_y<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
@@ -1007,7 +1007,7 @@ t_cur_step, Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, mac.Nx, mac.Ny, mac.N
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, x_device, y_device, dpsi, fnx, fny, 2*kt+1,\
 t_cur_step, Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, mac.Nx, mac.Ny, mac.Nt );
      
-     commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_old, phi_old, U_new, dpsi, phi_new);
+     if ( (2*kt+2)%params.ha_wd==0 )commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_old, phi_old, U_new, dpsi, phi_new);
      //cudaDeviceSynchronize();
      set_BC_mpi_x<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, phi_new, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
      set_BC_mpi_y<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, phi_new, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
