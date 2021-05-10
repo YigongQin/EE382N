@@ -429,25 +429,35 @@ getSumX_parallel(float* phi, float* meanX, int fnx, int fny){
 }
 
 __global__ void
-getSumY_parallel(float* phi, float* meanX, int fnx, int fny){
+getSumY_parallel(float* phi, float* meanY, int fnx, int fny, int boxNum, int* boxLeftBound, int* boxRightBound, int* boxUpperBound, int* boxLowerBound, int* startIndex){
   
   int indexX=blockIdx.x * blockDim.x + threadIdx.x;
   int indexY=blockIdx.y * blockDim.y + threadIdx.y;
   if(indexX>=fnx || indexY>= fny){
     return;
   }
-  atomicAdd(meanX+indexX, phi[indexY*fnx+indexX]);
+  for(int i=0; i<boxNum; i++){
+    //in the i th box
+    if(indexX>=boxLeftBound[i] && indexX<=boxRightBound[i] && indexY>=boxLowerBound[i] && indexY<=boxUpperBound[i]){
+      atomicAdd(meanY+startIndex[i]+indexX-boxLeftBound[i], phi[indexY*fnx+indexX]);
+    }
+  
   //printf("%f ", meanY[index]);
+  }
 }
 
 __global__ void
-divide(float* array, int length, int num){
+divide(float* array, int length, int* num, int* startIndex, int boxNum){
   
   int index=blockIdx.x * blockDim.x + threadIdx.x;
   if(index>=length){
     return;
   }
-  array[index]=array[index]/num;
+  for(int i=0; i<boxNum; i++){
+    //in the ith box's partition
+    if(index>=startIndex[i] && index< startIndex[i+1])
+      array[index]=array[index]/num[i];
+  }
   //printf("%f ", meanY[index]);
 }
 
@@ -592,7 +602,7 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
 
 }
 
-void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U, int* tipPos, float* cellNum, float* asc){
+void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U, int* tipPos, float* cellNum, float* asc, int boxNum, int* boxSizeX, int*boxSizeY, int* boxPosX, int* boxPosY){
   // we should have already pass all the data structure in by this time
   // move those data onto device
   printCudaInfo();
@@ -631,25 +641,35 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
 
   printf("fnx=%d, fny=%d\n", fnx, fny);
   int* tipPos_device;
-  cudaMalloc((void**)&tipPos_device, sizeof(int)*params.Mt);
+  cudaMalloc((void**)&tipPos_device, sizeof(int)*params.Mt*boxNum);
   float* cellNum_device;
-  cudaMalloc((void**)&cellNum_device, sizeof(float)*params.Mt);
+  cudaMalloc((void**)&cellNum_device, sizeof(float)*params.Mt*boxNum);
   float* asc_device;
-  cudaMalloc((void**)&asc_device, sizeof(float)*params.Mt);
+  cudaMalloc((void**)&asc_device, sizeof(float)*params.Mt*boxNum);
 
 
   float* meanY;
-  cudaMalloc((void**)&meanY, sizeof(float)*fnx);
-  float meanY_host[fnx];
+  int meanYLength=0;
+  for(int i=0; i<boxNum; i++){
+    meanYLength+=boxSizeX[i];
+  }
+  cudaMalloc((void**)&meanY, sizeof(float)*meanYLength);
+  float meanY_host[meanYLength];
+
   float* meanX;
-  cudaMalloc((void**)&meanX, sizeof(float)*fny);
+  int meanXLength=0;
+  for(int i=0; i<boxNum; i++){
+    meanXLength+=boxSizeY[i];
+  }
+  cudaMalloc((void**)&meanX, sizeof(float)*meanXLength);
+  float meanX_host[meanXLength];
 
-  float* meanX_1;
-  cudaMalloc((void**)&meanX_1, sizeof(float)*fny);
-  float* meanY_1;
-  cudaMalloc((void**)&meanY_1, sizeof(float)*fnx);
+  // float* meanX_1;
+  // cudaMalloc((void**)&meanX_1, sizeof(float)*fny);
+  // float* meanY_1;
+  // cudaMalloc((void**)&meanY_1, sizeof(float)*fnx);
 
-  float meanX_host[fny];
+  
 
   float* C;
   cudaMalloc((void**)&C, sizeof(float)*fnx*fny);
@@ -667,14 +687,55 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
    set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_old, dpsi, fnx, fny);
    cudaDeviceSynchronize();
    double startTime = CycleTimer::currentSeconds();
-   int my_blockSize=256;
+   int my_blockSize=128;
    int my_numBlockX=(fnx+my_blockSize-1)/my_blockSize;
    int my_numBlockY=(fny+my_blockSize-1)/my_blockSize;
 
    dim3 my_blockSize2d_y(1,128);
    dim3 my_numBlock2d_y((fnx+my_blockSize2d_y.x-1)/my_blockSize2d_y.x, (fny+my_blockSize2d_y.y-1)/my_blockSize2d_y.y);
-  dim3 my_blockSize2d_x(128,1);
+   dim3 my_blockSize2d_x(128,1);
    dim3 my_numBlock2d_x((fnx+my_blockSize2d_x.x-1)/my_blockSize2d_x.x, (fny+my_blockSize2d_x.y-1)/my_blockSize2d_x.y);
+
+   int boxLeftBound[boxNum];
+   int boxRightBound[boxNum];
+   int boxUpperBound[boxNum];
+   int boxLowerBound[boxNum];
+   for(int i=0; i<boxNum; i++){
+     boxLeftBound[i]=boxPosX[i];
+     boxRightBound[i]=boxPosX[i]+boxSizeX[i]-1;
+     boxLowerBound[i]=boxPosY[i];
+     boxUpperBound[i]=boxPosY[i]+boxSizeY[i]-1;
+   }
+   int* boxLeftBound_device;
+   int* boxRightBound_device;
+   int* boxUpperBound_device;
+   int* boxLowerBound_device;
+   cudaMalloc((void**)&boxLeftBound_device, sizeof(int)*boxNum);
+   cudaMalloc((void**)&boxRightBound_device, sizeof(int)*boxNum);
+   cudaMalloc((void**)&boxUpperBound_device, sizeof(int)*boxNum);
+   cudaMalloc((void**)&boxLowerBound_device, sizeof(int)*boxNum);
+   cudaMemcpy(boxLeftBound_device, boxLeftBound, sizeof(int)*boxNum, cudaMemcpyHostToDevice);
+   cudaMemcpy(boxRightBound_device, boxRightBound, sizeof(int)*boxNum, cudaMemcpyHostToDevice);
+   cudaMemcpy(boxUpperBound_device, boxUpperBound, sizeof(int)*boxNum, cudaMemcpyHostToDevice);
+   cudaMemcpy(boxLowerBound_device, boxLowerBound, sizeof(int)*boxNum, cudaMemcpyHostToDevice);
+   int meanXStartIndex[boxNum+1];
+   int meanYStartIndex[boxNum+1];
+   for(int i=0; i<boxNum+1; i++){
+     if(i==0){
+       meanXStartIndex[i]=0;
+       meanYStartIndex[i]=0;
+     }
+     else {
+       meanXStartIndex[i]=meanXStartIndex[i-1]+boxSizeY[i-1];
+       meanYStartIndex[i]=meanYStartIndex[i-1]+boxSizeX[i-1];
+     }
+   }
+   int* meanXStartIndex_device;
+   int* meanYStartIndex_device;
+   cudaMalloc((void**)&meanXStartIndex_device, sizeof(int)*(boxNum+1));
+   cudaMalloc((void**)&meanYStartIndex_device, sizeof(int)*(boxNum+1));
+   cudaMemcpy(meanXStartIndex_device, meanXStartIndex, sizeof(int)*(boxNum+1), cudaMemcpyHostToDevice);
+   cudaMemcpy(meanYStartIndex_device, meanYStartIndex, sizeof(int)*(boxNum+1), cudaMemcpyHostToDevice);
    
     double totalTime1=0;
     double totalTime2=0;
@@ -696,9 +757,9 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
       totalTime1+=(time2-time1);
 
       //getMeanY<<<my_numBlockX,my_blockSize>>>(phi_new, meanY, fnx, fny);
-      setZero<<<num_block_2d, blocksize_2d>>>(meanY, fnx);
-      getSumY_parallel<<<my_numBlock2d_x,my_blockSize2d_x>>>(phi_new, meanY, fnx, fny);
-      divide<<<num_block_2d, blocksize_2d>>>(meanY, fnx, fny);
+      setZero<<<(meanYLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanY, meanYLength);
+      getSumY_parallel<<<my_numBlock2d_x,my_blockSize2d_x>>>(phi_new, meanY, fnx, fny, boxNum, boxLeftBound_device, boxRightBound_device, boxUpperBound_device, boxLowerBound_device, meanYStartIndex_device);
+      divide<<<(meanYLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanY, meanYLength, boxSizeY, meanYStartIndex_device, boxNum);
 
       cudaDeviceSynchronize();
       double time3 = CycleTimer::currentSeconds();
@@ -771,30 +832,30 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
       rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi, fnx, fny);
       //cudaDeviceSynchronize();
       //getMeanY<<<my_numBlockX,my_blockSize>>>(phi_old, meanY, fnx, fny);
-      setZero<<<num_block_2d, blocksize_2d>>>(meanY, fnx);
-      getSumY_parallel<<<my_numBlock2d_x,my_blockSize2d_x>>>(phi_old, meanY, fnx, fny);
-      divide<<<num_block_2d, blocksize_2d>>>(meanY, fnx, fny);
-      //getMeanX<<<my_numBlockY,my_blockSize>>>(phi_old, meanX, fnx, fny);
-      //2d parallel with atomicAdd
-      setZero<<<num_block_2d, blocksize_2d>>>(meanX, fny);
-      getSumX_parallel<<<my_numBlock2d_y,my_blockSize2d_y>>>(phi_old, meanX, fnx, fny);
-      divide<<<num_block_2d, blocksize_2d>>>(meanX, fny, fnx);
+      // setZero<<<num_block_2d, blocksize_2d>>>(meanY, fnx);
+      // getSumY_parallel<<<my_numBlock2d_x,my_blockSize2d_x>>>(phi_old, meanY, fnx, fny);
+      // divide<<<num_block_2d, blocksize_2d>>>(meanY, fnx, fny);
+      // //getMeanX<<<my_numBlockY,my_blockSize>>>(phi_old, meanX, fnx, fny);
+      // //2d parallel with atomicAdd
+      // setZero<<<num_block_2d, blocksize_2d>>>(meanX, fny);
+      // getSumX_parallel<<<my_numBlock2d_y,my_blockSize2d_y>>>(phi_old, meanX, fnx, fny);
+      // divide<<<num_block_2d, blocksize_2d>>>(meanX, fny, fnx);
 
-      // cudaMemcpy(meanY_host, meanY, sizeof(float)*fnx, cudaMemcpyDeviceToHost);
-      // for(int i=0; i<fnx; i++){
-      //   printf("%f ", meanY_host[i]);
-      // }
-      // printf("\n");
-      // cudaMemcpy(meanX_host, meanX, sizeof(float)*fny, cudaMemcpyDeviceToHost);
-      // for(int i=0; i<fny; i++){
-      //   printf("%f ", meanX_host[i]);
-      // }
-      // printf("\n");
+      // // cudaMemcpy(meanY_host, meanY, sizeof(float)*fnx, cudaMemcpyDeviceToHost);
+      // // for(int i=0; i<fnx; i++){
+      // //   printf("%f ", meanY_host[i]);
+      // // }
+      // // printf("\n");
+      // // cudaMemcpy(meanX_host, meanX, sizeof(float)*fny, cudaMemcpyDeviceToHost);
+      // // for(int i=0; i<fny; i++){
+      // //   printf("%f ", meanX_host[i]);
+      // // }
+      // // printf("\n");
 
-      getTip<<<1,1>>>(meanX, tipPos_device, 2*kt+1, fny);
-      getCell<<<1,1>>>(meanY, cellNum_device, 2*kt+1, fnx);
-      getC<<<num_block_2d, blocksize_2d>>>(C, U_old, phi_old, fnx, fny);
-      simpleSum<<<num_block_2d, blocksize_2d>>>(C, asc_device, 2*kt+1, length);
+      // getTip<<<1,1>>>(meanX, tipPos_device, 2*kt+1, fny);
+      // getCell<<<1,1>>>(meanY, cellNum_device, 2*kt+1, fnx);
+      // getC<<<num_block_2d, blocksize_2d>>>(C, U_old, phi_old, fnx, fny);
+      // simpleSum<<<num_block_2d, blocksize_2d>>>(C, asc_device, 2*kt+1, length);
     }
     divide<<<(params.Mt+127)/128, 128>>>(asc_device, params.Mt, fnx*fny);
 

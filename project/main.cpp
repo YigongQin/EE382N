@@ -62,7 +62,7 @@ struct GlobalConstants {
 };
 
 void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
-void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U, int* tipPos, float* cellNum, float* asc);
+void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U, int* tipPos, float* cellNum, float* asc, int boxNum, int* boxSizeX, int*boxSizeY, int* boxPosX, int* boxPosY);
 
 
 // add function for easy retrieving params
@@ -243,10 +243,25 @@ int main(int argc, char** argv)
     //    std::cout<<phi[i]<<" ";
     //}
     //std::cout<<std::endl;
-    int tipPos[params.Mt];
-    float cellNum[params.Mt];
-    float asc[params.Mt];
-    my_setup(params, length_x, length_y, x, y, phi, psi, Uc, tipPos, cellNum, asc);
+    int boxNum=4;
+    int boxSizeX[boxNum];
+    for(int i=0; i<boxNum; i++){
+        boxSizeX[i]=params.nx/boxNum - i;
+    }
+    int boxSizeY[boxNum];
+    for(int i=0; i<boxNum; i++){
+        boxSizeY[i]=params.ny/boxNum - i;
+    }
+    int boxPosX[boxNum];
+    int boxPosY[boxNum];
+    for(int i=0; i<boxNum; i++){
+        boxPosX[i]=i*params.nx/boxNum;
+        boxPosY[i]=i*params.ny/boxNum;
+    }
+    int tipPos[params.Mt*boxNum];
+    float cellNum[params.Mt*boxNum];
+    float asc[params.Mt*boxNum];
+    my_setup(params, length_x, length_y, x, y, phi, psi, Uc, tipPos, cellNum, asc, boxNum, boxSizeX, boxSizeY, boxPosX, boxPosY);
 
     //std::cout<<"y= ";
     //for(int i=0+length_y; i<2*length_y; i++){
