@@ -6,6 +6,12 @@
 #include <curand.h>
 #include <curand_kernel.h>
 #include "CycleTimer.h"
+#define BLOCK_DIM_X 16
+#define BLOCK_DIM_Y 16
+#define BLOCKSIZE BLOCK_DIM_X*BLOCK_DIM_Y
+#define HALO 1
+#define REAL_BLOCK_DIM_X BLOCK_DIM_X-2*HALO
+#define REAL_BLOCK_DIM_Y BLOCK_DIM_Y-2*HALO
 
 using namespace std;
 void printCudaInfo();
@@ -181,7 +187,7 @@ aptheta(float ux, float uz){
 
 // (phi_new , psi_new, U_old, dpsi) with rotten BC  to (phi_old, psi_old, U_new) with rotten BC
 __global__ void
-merge_PF(float* ps, float* ph, float* U, float* ps_new, float* ph_new, float* U_new, float* dpsi, \
+merge_PF(float* ps, float* ph, float* U, float* ps_new, float* ph_new, float* U_new, float* dpsi, float* dpsi_new,\
        float* y, int fnx, int fny, int nt, float *rnd, int num_block_x){
 
   // load old data
@@ -209,7 +215,10 @@ merge_PF(float* ps, float* ph, float* U, float* ps_new, float* ph_new, float* U_
   int C = j*fnx + i;
 
   // load necessary data
-
+  ps_shared[place] = ps[C];
+  ph_shared[place] = ph[C];
+  U_shared[place]  = U[C];
+  dpsi_shared[place]  = dpsi[C];
   __syncthreads();
 
   // updaate BC first
@@ -258,67 +267,67 @@ merge_PF(float* ps, float* ph, float* U, float* ps_new, float* ph_new, float* U_
         // =============================================================
 
         // these ph's are defined on cell centers
-        float phipjp=( ph_shared_new[place] + ph_shared_new[R] + ph_shared_new[T] + ph_shared_new[T+1] ) * 0.25f;
-        float phipjm=( ph_shared_new[place] + ph_shared_new[R] + ph_shared_new[B] + ph_shared_new[B+1] ) * 0.25f;
-        float phimjp=( ph_shared_new[place] + ph_shared_new[L] + ph_shared_new[T-1] + ph_shared_new[T] ) * 0.25f;
-        float phimjm=( ph_shared_new[place] + ph_shared_new[L] + ph_shared_new[B-1] + ph_shared_new[B] ) * 0.25f;
+        float phipjp=( ph_shared[place] + ph_shared[R] + ph_shared[T] + ph_shared[T+1] ) * 0.25f;
+        float phipjm=( ph_shared[place] + ph_shared[R] + ph_shared[B] + ph_shared[B+1] ) * 0.25f;
+        float phimjp=( ph_shared[place] + ph_shared[L] + ph_shared[T-1] + ph_shared[T] ) * 0.25f;
+        float phimjm=( ph_shared[place] + ph_shared[L] + ph_shared[B-1] + ph_shared[B] ) * 0.25f;
 
         // if (C==1001){
         //   printf("detailed check of neighbours 3\n");
         //   printf("R: %f ; L:%f ; T: %f ; B: %f \n", phipjp, phipjm, phimjp, phimjm);
         // }
-        float jat    = 0.5f*(1.0f+(1.0f-k)*U_shared[place])*(1.0f-ph_shared_new[place]*ph_shared_new[place])*dpsi_shared_new[place];
+        float jat    = 0.5f*(1.0f+(1.0f-k)*U_shared[place])*(1.0f-ph_shared[place]*ph_shared[place])*dpsi_shared[place];
         /*# ============================
         # right edge flux (i+1/2, j)
         # ============================*/
-        float phx = ph_shared_new[R]-ph_shared_new[place];
+        float phx = ph_shared[R]-ph_shared[place];
         float phz = phipjp - phipjm;
         float phn2 = phx*phx + phz*phz;
         if (phn2 > eps) {nx = phx / sqrtf(phn2);}
                    else {nx = 0.0f;}
         
-        float jat_ip = 0.5f*(1.0f+(1.0f-k)*U_shared[R])*(1.0f-ph_shared_new[R]*ph_shared_new[R])*dpsi_shared_new[R];	
-        float UR = hi*Dl_tilde*0.5f*(2.0f - ph_shared_new[place] - ph_shared_new[R])*(U_shared[R]-U_shared[place]) + 0.5f*(jat + jat_ip)*nx;
+        float jat_ip = 0.5f*(1.0f+(1.0f-k)*U_shared[R])*(1.0f-ph_shared[R]*ph_shared[R])*dpsi_shared[R];	
+        float UR = hi*Dl_tilde*0.5f*(2.0f - ph_shared[place] - ph_shared[R])*(U_shared[R]-U_shared[place]) + 0.5f*(jat + jat_ip)*nx;
     	 
     	 
         /* ============================
         # left edge flux (i-1/2, j)
         # ============================*/
-        phx = ph_shared_new[place]-ph_shared_new[L];
+        phx = ph_shared[place]-ph_shared[L];
         phz = phimjp - phimjm;
         phn2 = phx*phx + phz*phz;
         if (phn2 > eps) {nx = phx / sqrtf(phn2);}
                    else {nx = 0.0f;}
         
-        float jat_im = 0.5f*(1.0f+(1.0f-k)*U_shared[L])*(1.0f-ph_shared_new[L]*ph_shared_new[L])*dpsi_shared_new[L];
-        float UL = hi*Dl_tilde*0.5f*(2.0f - ph_shared_new[place] - ph_shared_new[L])*(U_shared[place]-U_shared[L]) + 0.5f*(jat + jat_im)*nx;
+        float jat_im = 0.5f*(1.0f+(1.0f-k)*U_shared[L])*(1.0f-ph_shared[L]*ph_shared[L])*dpsi_shared[L];
+        float UL = hi*Dl_tilde*0.5f*(2.0f - ph_shared[place] - ph_shared[L])*(U_shared[place]-U_shared[L]) + 0.5f*(jat + jat_im)*nx;
     	 
     	 
         /*# ============================
         # top edge flux (i, j+1/2)
         # ============================*/     
         phx = phipjp - phimjp;
-        phz = ph_shared_new[T]-ph_shared_new[place];
+        phz = ph_shared[T]-ph_shared[place];
         phn2 = phx*phx + phz*phz;
         if (phn2 > eps) {nz = phz / sqrtf(phn2);}
                    else {nz = 0.0f;}    	
   
-        float jat_jp = 0.5f*(1.0f+(1.0f-k)*U_shared[T])*(1.0f-ph_shared_new[T]*ph_shared_new[T])*dpsi_shared_new[T];      
+        float jat_jp = 0.5f*(1.0f+(1.0f-k)*U_shared[T])*(1.0f-ph_shared[T]*ph_shared[T])*dpsi_shared[T];      
         
-        float UT = hi*Dl_tilde*0.5f*(2.0f - ph_shared_new[place] - ph_shared_new[T])*(U_shared[T]-U_shared[place]) + 0.5f*(jat + jat_jp)*nz;
+        float UT = hi*Dl_tilde*0.5f*(2.0f - ph_shared[place] - ph_shared[T])*(U_shared[T]-U_shared[place]) + 0.5f*(jat + jat_jp)*nz;
     	 
     	 
         /*# ============================
         # bottom edge flux (i, j-1/2)
         # ============================*/  
         phx = phipjm - phimjm;
-        phz = ph_shared_new[place]-ph_shared_new[B];
+        phz = ph_shared[place]-ph_shared[B];
         phn2 = phx*phx + phz*phz;
         if (phn2 > eps) {nz = phz / sqrtf(phn2);}
                    else {nz = 0.0f;} 
 
-        float jat_jm = 0.5f*(1.0f+(1.0f-k)*U_shared[B])*(1.0f-ph_shared_new[B]*ph_shared_new[B])*dpsi_shared_new[B];              
-        float UB = hi*Dl_tilde*0.5f*(2.0f - ph_shared_new[place] - ph_shared_new[B])*(U_shared[place]-U_shared[B]) + 0.5f*(jat + jat_jm)*nz;
+        float jat_jm = 0.5f*(1.0f+(1.0f-k)*U_shared[B])*(1.0f-ph_shared[B]*ph_shared[B])*dpsi_shared[B];              
+        float UB = hi*Dl_tilde*0.5f*(2.0f - ph_shared[place] - ph_shared[B])*(U_shared[place]-U_shared[B]) + 0.5f*(jat + jat_jm)*nz;
         
         float rhs_U = ( (UR-UL) + (UT-UB) ) * hi + cP.sqrt2 * jat;
         float tau_U = (1.0f+cP.k) - (1.0f-cP.k)*ph_shared_new[place];
@@ -429,7 +438,7 @@ merge_PF(float* ps, float* ph, float* U, float* ps_new, float* ph_new, float* U_
         float Up = (y[j]/cP.W0 - cP.R_tilde * (nt*cP.dt) )/cP.lT_tilde;
 
         float rhs_psi = ((JR-JL) + (JT-JB) + extra) * cP.hi*cP.hi + \
-                   cP.sqrt2*ph_shared[place] - cP.lamd*(1.0f-ph_shared[place]*ph_shared[place])*cP.sqrt2*(U_shared[place] + Up);
+                   cP.sqrt2*ph_shared[place] - cP.lamd*(1.0f-ph_shared[place]*ph_shared[place])*cP.sqrt2*(U_shared_new[place] + Up);
 
         /*# =============================================================
         #
@@ -446,7 +455,7 @@ merge_PF(float* ps, float* ph, float* U, float* ps_new, float* ph_new, float* U_
         ph_shared_new[place] = tanhf(ps_shared_new[place]/cP.sqrt2);
         ps_new[C] = ps_shared_new[place];
         ph_new[C] = ph_shared_new[place];
-        dpsi[C]   = dpsi_shared_new[place];
+        dpsi_new[C]   = dpsi_shared_new[place];
          }
        }
 
@@ -695,6 +704,7 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
   float* phi_old;// = NULL;
   float* phi_new;// = NULL;
   float* dpsi;// = NULL;
+  float* dpsi_new;
   // allocate x, y, phi, psi, U related params
   int length = fnx*fny;
 
@@ -708,6 +718,7 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
   cudaMalloc((void **)&psi_new,  sizeof(float) * length);
   cudaMalloc((void **)&U_new,    sizeof(float) * length);
   cudaMalloc((void **)&dpsi,    sizeof(float) * length);
+  cudaMalloc((void **)&dpsi_new,    sizeof(float) * length);  
 
   cudaMemcpy(x_device, x, sizeof(float) * fnx, cudaMemcpyHostToDevice);
   cudaMemcpy(y_device, y, sizeof(float) * fny, cudaMemcpyHostToDevice);
@@ -730,6 +741,11 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
    int num_block_2d = (fnx*fny+blocksize_2d-1)/blocksize_2d;
    int num_block_1d = (fnx+fny+blocksize_1d-1)/blocksize_1d;
    printf("block size %d, # blocks %d\n", blocksize_2d, num_block_2d); 
+   
+   int shared_num_blockx = (fnx - 2 + REAL_BLOCK_DIM_X - 1) / REAL_BLOCK_DIM_X;
+   int shared_num_blocky = (fny - 2 + REAL_BLOCK_DIM_Y - 1) / REAL_BLOCK_DIM_Y;
+   int shared_blocks = shared_num_blockx*shared_num_blocky;
+   
    initialize<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, U_new, x_device, y_device, fnx, fny);
    init_rand_num<<< (fnx*fny+period+blocksize_2d-1)/blocksize_2d, blocksize_2d >>>(dStates, params.seed_val,length+period);
    gen_rand_num<<< (fnx*fny+period+blocksize_2d-1)/blocksize_2d,blocksize_2d >>>(dStates, random_nums,length+period);
@@ -747,9 +763,9 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
   cudaTextureObject_t tex=0;
   cudaCreateTextureObject(&tex, &resDesc, &texDesc, NULL);
 
-   set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_new, dpsi, fnx, fny);
+   set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_new, dpsi_new, fnx, fny);
    set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_old, dpsi, fnx, fny);
-   rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 0, random_nums );
+   rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi_new, fnx, fny, 0, random_nums );
 
    cudaDeviceSynchronize();
    double startTime = CycleTimer::currentSeconds();
@@ -758,12 +774,14 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
    //  printf("time step %d\n",kt);
     // rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt, random_nums );
      //cudaDeviceSynchronize();
-     set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
+     merge_PF<<< shared_blocks, BLOCKSIZE >>>(psi_new, phi_new, U_old, psi_old, phi_old, U_new, dpsi_new, dpsi, y_device, \
+                     fnx, fny, 2*kt+1, random_nums, shared_num_blockx);
+    // set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
      //cudaDeviceSynchronize();
-     rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi, fnx, fny);
+    // rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi, fnx, fny);
 
      //cudaDeviceSynchronize();
-     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1, random_nums );
+    // rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1, random_nums );
      //cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
      //cudaDeviceSynchronize();
