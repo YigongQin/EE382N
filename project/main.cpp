@@ -147,7 +147,7 @@ int main(int argc, char** argv)
     params.Dl_tilde = params.Dl*params.tau0/pow(params.W0,2);
     params.lT_tilde = params.lT/params.W0;
     params.dt = 0.8*pow(params.dx,2)/(4*params.Dl_tilde);
-    params.ny = (int)params.asp_ratio*params.nx;
+    params.ny = (int)(params.asp_ratio*params.nx);
     params.lxd = params.dx*params.W0*params.nx; //                    # horizontal length in micron
     params.lyd = params.asp_ratio*params.lxd;
     params.hi = 1.0/params.dx;
@@ -243,17 +243,21 @@ int main(int argc, char** argv)
     //    std::cout<<phi[i]<<" ";
     //}
     //std::cout<<std::endl;
-    int boxNum=4;
+    int boxNum=1;
     int boxSizeX[boxNum];
     for(int i=0; i<boxNum; i++){
-        boxSizeX[i]=i+1;
+        boxSizeX[i]=100;
     }
     int boxSizeY[boxNum];
     for(int i=0; i<boxNum; i++){
-        boxSizeY[i]=boxNum-i;
+        boxSizeY[i]=10;
     }
     int boxPosX[boxNum];
     int boxPosY[boxNum];
+    // for(int i=0; i<boxNum; i++){
+    //     boxPosX[i]=i*params.nx/boxNum;
+    //     boxPosY[i]=i*params.ny/boxNum;
+    // }
     for(int i=0; i<boxNum; i++){
         boxPosX[i]=i*params.nx/boxNum;
         boxPosY[i]=i*params.ny/boxNum;
