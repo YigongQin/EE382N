@@ -243,14 +243,14 @@ int main(int argc, char** argv)
     //    std::cout<<phi[i]<<" ";
     //}
     //std::cout<<std::endl;
-    int boxNum=1;
+    int boxNum=6;
     int boxSizeX[boxNum];
     for(int i=0; i<boxNum; i++){
-        boxSizeX[i]=100;
+        boxSizeX[i]=500;
     }
     int boxSizeY[boxNum];
     for(int i=0; i<boxNum; i++){
-        boxSizeY[i]=10;
+        boxSizeY[i]=600;
     }
     int boxPosX[boxNum];
     int boxPosY[boxNum];
@@ -260,11 +260,14 @@ int main(int argc, char** argv)
     // }
     for(int i=0; i<boxNum; i++){
         boxPosX[i]=i*params.nx/boxNum;
-        boxPosY[i]=i*params.ny/boxNum;
+        boxPosY[i]=0;
     }
-    int tipPos[params.Mt*boxNum];
-    float cellNum[params.Mt*boxNum];
-    float asc[params.Mt*boxNum];
+    int interval=1000;
+    int boxStatsLength= (params.Mt+interval-1)/interval;
+    int tipPos[boxStatsLength*boxNum];
+    float cellNum[boxStatsLength*boxNum];
+    float asc[boxStatsLength*boxNum];
+    printf("starting kernel\n");
     my_setup(params, length_x, length_y, x, y, phi, psi, Uc, tipPos, cellNum, asc, boxNum, boxSizeX, boxSizeY, boxPosX, boxPosY);
 
     //std::cout<<"y= ";

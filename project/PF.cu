@@ -609,7 +609,7 @@ getTip(float* meanX, int* startIndex, int* tipPos_device, int arrayIndex, int* b
     //printf("%d ", i);
     i--;
   }
-  if(i!=startIndex[index]-1)tipPos_device[index*cP.Mt+arrayIndex]=i-startIndex[index]+boxLowerBound[index];
+  if(i!=startIndex[index]-1)tipPos_device[index*statsLength+arrayIndex]=i-startIndex[index]+boxLowerBound[index];
   else tipPos_device[index*statsLength+arrayIndex]=-1;
   //printf("tipPos=%d\n",tipPos_device[arrayIndex]);
 }
@@ -688,7 +688,7 @@ getCAvg(float* U, float* phi, int fnx, int fny, float* asc_device, int offset,
   for(int i=0; i<boxNum; i++){
     //in the ith box
     if(indexX>=boxLeftBound[i] && indexX<=boxRightBound[i] && indexY>=boxLowerBound[i] && indexY<=boxUpperBound[i]){
-      float C=cP.c_infm*(U[indexY*fnx+indexX]*(1-cP.k)+cP.k)*(1-phi[indexY*fnx+indexX]+cP.k*(1+phi[indexY*fnx+indexX]))/(2*cP.k);
+      float C=cP.c_infty*(U[indexY*fnx+indexX]*(1-cP.k)+cP.k)*(1-phi[indexY*fnx+indexX]+cP.k*(1+phi[indexY*fnx+indexX]))/(2*cP.k);
       float avg_C=(fnx*fny/((boxRightBound[i]-boxLeftBound[i]+1)*(boxUpperBound[i]-boxLowerBound[i]+1)))*C;
       //printf("X=%d, Y=%d, avg_C=%f, addto %d\n",indexX, indexY, avg_C, i*cP.Mt+offset);
       atomicAdd(asc_device+i*statsLength+offset, avg_C);
@@ -812,7 +812,6 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
 
   // pass all the read-only params into global constant
   cudaMemcpyToSymbol(cP, &params, sizeof(GlobalConstants));
-  
   int interval=1000;
   int statsBoxLength=(params.Mt+interval-1)/interval;
   int statsArrayLength=((params.Mt+interval-1)/interval)*boxNum;
@@ -824,14 +823,13 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
   float* asc_device;
   cudaMalloc((void**)&asc_device, sizeof(float)*statsArrayLength);
 
-
   float* meanY;
   int meanYLength=0;
   for(int i=0; i<boxNum; i++){
     meanYLength+=boxSizeX[i];
   }
   cudaMalloc((void**)&meanY, sizeof(float)*meanYLength);
-  float meanY_host[meanYLength];
+  //float meanY_host[meanYLength];
 
   float* meanX;
   int meanXLength=0;
@@ -839,7 +837,7 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
     meanXLength+=boxSizeY[i];
   }
   cudaMalloc((void**)&meanX, sizeof(float)*meanXLength);
-  float meanX_host[meanXLength];
+  //float meanX_host[meanXLength];
 
   // float* meanX_1;
   // cudaMalloc((void**)&meanX_1, sizeof(float)*fny);
@@ -850,7 +848,7 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
 
   float* C;
   cudaMalloc((void**)&C, sizeof(float)*fnx*fny);
-  float C_host[fnx*fny];
+  //float C_host[fnx*fny];
 
 
 
@@ -1006,13 +1004,15 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
       //   printf("%f ", meanY_host[i]);
       // }
       // printf("\n");
-      if(2*kt==0){
-      cudaMemcpy(meanX_host, meanX, sizeof(float)*meanXLength, cudaMemcpyDeviceToHost);
-      for(int i=0; i<meanXLength; i++){
-        printf("%f ", meanX_host[i]);
-      }
-      printf("\n");
-      }
+
+      // if(2*kt==0){
+      // cudaMemcpy(meanX_host, meanX, sizeof(float)*meanXLength, cudaMemcpyDeviceToHost);
+      // for(int i=0; i<meanXLength; i++){
+      //   printf("%f ", meanX_host[i]);
+      // }
+      // printf("\n");
+      // }
+
       // cudaMemcpy(meanX_host, meanX_1, sizeof(float)*fny, cudaMemcpyDeviceToHost);
       // for(int i=0; i<fny; i++){
       //   printf("%f ", meanX_host[i]);
@@ -1085,11 +1085,11 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
       if((2*kt+1)%interval==0){
       setZero<<<(meanYLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanY, meanYLength);
       getMeanY_parallel<<<my_numBlock2d_x,my_blockSize2d_x>>>(phi_old, meanY, fnx, fny, boxNum, boxLeftBound_device, boxRightBound_device, boxUpperBound_device, boxLowerBound_device, meanYStartIndex_device);
-      divide_simple<<<(meanYLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanY, meanYLength, fny);
+      divide_simple<<<(meanYLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanY, meanYLength, fny*fnx);
 
       setZero<<<(meanXLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanX, meanXLength);
       getMeanX_parallel<<<my_numBlock2d_y,my_blockSize2d_y>>>(phi_old, meanX, fnx, fny, boxNum, boxLeftBound_device, boxRightBound_device, boxUpperBound_device, boxLowerBound_device, meanXStartIndex_device);
-      divide_simple<<<(meanXLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanX, meanXLength, fnx);
+      divide_simple<<<(meanXLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanX, meanXLength, fnx*fny);
       
       getTip<<<1,boxNum>>>(meanX, meanXStartIndex_device, tipPos_device, 2*kt+1, boxLowerBound_device, statsBoxLength);
       getCell<<<1,boxNum>>>(meanY, meanYStartIndex_device, cellNum_device, 2*kt+1, statsBoxLength);
@@ -1099,24 +1099,41 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
     }
     divide_simple<<<(statsArrayLength+127)/128, 128>>>(asc_device, statsArrayLength, fnx*fny);
 
+
       cudaMemcpy(tipPos, tipPos_device, sizeof(int)*statsArrayLength, cudaMemcpyDeviceToHost);
-      printf("tipPos:");
-      for(int i=0; i<statsArrayLength; i++){
-        printf("%d ", tipPos[i]);
+      printf("tipPos:\n");
+      // for(int i=0; i<statsArrayLength; i++){
+      //   printf("%d ", tipPos[i]);
+      // }
+      // printf("\n");
+      for(int i=0; i<boxNum; i++){
+        printf("box %d: ", i);
+        for(int j=0; j<statsBoxLength; j++){
+          printf("%d ", tipPos[i*statsBoxLength+j]);
+        }
+        printf("\n");
       }
       printf("\n");
 
       cudaMemcpy(cellNum, cellNum_device, sizeof(float)*statsArrayLength, cudaMemcpyDeviceToHost);
-      printf("cellNum:");
-      for(int i=0; i<statsArrayLength; i++){
-        printf("%f ", cellNum[i]);
+      printf("cellNum:\n");
+      for(int i=0; i<boxNum; i++){
+        printf("box %d: ", i);
+        for(int j=0; j<statsBoxLength; j++){
+          printf("%f ", cellNum[i*statsBoxLength+j]);
+        }
+        printf("\n");
       }
       printf("\n");
 
       cudaMemcpy(asc, asc_device, sizeof(float)*statsArrayLength, cudaMemcpyDeviceToHost);
-      printf("asc:");
-      for(int i=0; i<statsArrayLength; i++){
-        printf("%f ", asc[i]);
+      printf("asc:\n");
+      for(int i=0; i<boxNum; i++){
+        printf("box %d: ", i);
+        for(int j=0; j<statsBoxLength; j++){
+          printf("%f ", asc[i*statsBoxLength+j]);
+        }
+        printf("\n");
       }
       printf("\n");
 
@@ -1131,12 +1148,24 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
    cudaMemcpy(psi, psi_old, length * sizeof(float),cudaMemcpyDeviceToHost);
    cudaMemcpy(phi, phi_old, length * sizeof(float),cudaMemcpyDeviceToHost);
    cudaMemcpy(U, U_old, length * sizeof(float),cudaMemcpyDeviceToHost);
-   for(int i=0; i<10; i++){//fny
-     for(int j=0; j<100; j++){//fnx
-       printf("%f ", phi[i*fnx+j]);
-     }
-     printf("\n");
-   }
+  //  for(int i=0; i<600; i++){//fny
+  //    for(int j=0; j<500; j++){//fnx
+  //      printf("%f ", phi[i*fnx+j]);
+  //    }
+  //    printf("\n");
+  //  }
+
+  // float asc_final=0;
+  // float c_infty=2.45e-3;
+  // float k=0.14;
+  // printf("c_infty=%f, k=%f\n", c_infty, k);
+  // for(int i=0; i<length; i++){
+  //   float C=c_infty*(U[i]*(1-k)+k)*(1-phi[i]+k*(1+phi[i]))/(2*k);
+  //   //printf("%f ", C);
+  //   asc_final=asc_final+C;
+  // }
+  // asc_final=asc_final/length;
+  // printf("\nasc_final=%f\n", asc_final);
 
   cudaFree(x_device); cudaFree(y_device);
   cudaFree(psi_old); cudaFree(psi_new);
