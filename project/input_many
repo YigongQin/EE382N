@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri May 29 11:10:53 2020
-
 @author: yigongqin
 """
 
@@ -28,21 +27,21 @@ Created on Fri May 29 11:10:53 2020
     Dl_tilde = Dl*tau0/W0**2
     lT_tilde = lT/W0
     
-    eps = 1e-8                      	# divide-by-zero treatment
+    eps = 1e-8                      	# divide-by-zero treatmentSC21002
     alpha0 = 0                    	# misorientation angle in degree
     
     dx = 1.2                            # mesh width
     dt = 0.8*(dx)**2/(4*Dl_tilde)       # time step size for forward euler
 
-    asp_ratio = 4                  	# aspect ratio
-    nx = 128            		# number of cells in x, number of grids is nx+1
+    asp_ratio = 0.2                  	# aspect ratio
+    nx = 3000            		# number of cells in x, number of grids is nx+1
     ny = asp_ratio*nx
 
 
     lxd = dx*W0*nx                     # horizontal length in micron
     lyd = asp_ratio*lxd
 
-    Mt = 10000                     	# total  number of time steps
+    Mt = 100                     	# total  number of time steps
 
     eta = 0.0                		# magnitude of noise
 
@@ -51,4 +50,3 @@ Created on Fri May 29 11:10:53 2020
     ictype = 0                   	# initial condtion: 0 for semi-circular, 1 for planar interface, 2 for sum of sines
     filename = 'phase_field.mat'
     direc = './'                        # saving directory
-
