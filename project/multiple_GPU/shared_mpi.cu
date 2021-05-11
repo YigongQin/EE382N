@@ -224,28 +224,28 @@ merge_PF(float* ps, float* ph, float* U, float* ps_new, float* ph_new, float* U_
   // updaate BC first
   if ((j == 0) && (i < fnx)){
      if (((local_id_x>0) && (local_id_x<BLOCK_DIM_X-1))||(i == 0) || (i == fnx - 1)){
-      ps_shared_new[place] = ps_shared_new[place + 2*BLOCK_DIM_X];
-      ph_shared_new[place] = ph_shared_new[place + 2*BLOCK_DIM_X];
-      dpsi_shared_new[place] = dpsi_shared_new[place + 2*BLOCK_DIM_X];
+      ps_shared[place] = ps_shared[place + 2*BLOCK_DIM_X];
+      ph_shared[place] = ph_shared[place + 2*BLOCK_DIM_X];
+      dpsi_shared[place] = dpsi_shared[place + 2*BLOCK_DIM_X];
       U_shared[place] = U_shared[place + 2*BLOCK_DIM_X];}}
   if ((j == fny - 1)&& (i < fnx)){
      if (((local_id_x>0)&& (local_id_x<BLOCK_DIM_X-1))||(i == 0) || (i == fnx - 1)){
-      ps_shared_new[place] = ps_shared_new[place - 2*BLOCK_DIM_X];
-      ph_shared_new[place] = ph_shared_new[place - 2*BLOCK_DIM_X];
-      dpsi_shared_new[place]   = dpsi_shared_new[place - 2*BLOCK_DIM_X];
+      ps_shared[place] = ps_shared[place - 2*BLOCK_DIM_X];
+      ph_shared[place] = ph_shared[place - 2*BLOCK_DIM_X];
+      dpsi_shared[place]   = dpsi_shared[place - 2*BLOCK_DIM_X];
       U_shared[place] = U_shared[place - 2*BLOCK_DIM_X];}}
    __syncthreads();
    if ((i == 0) && (j < fny)){
      if ((local_id_y>0) && (local_id_y<BLOCK_DIM_Y-1)||(j == 0) || (j == fny - 1)){
-      ps_shared_new[place] = ps_shared_new[place + 2];
-      ph_shared_new[place] = ph_shared_new[place + 2];
-      dpsi_shared_new[place]   = dpsi_shared_new[place + 2];
+      ps_shared[place] = ps_shared[place + 2];
+      ph_shared[place] = ph_shared[place + 2];
+      dpsi_shared[place]   = dpsi_shared[place + 2];
       U_shared[place] = U_shared[place + 2];}}
    if ((i == fnx - 1) && (j < fny)){
       if ((local_id_y>0) && (local_id_y<BLOCK_DIM_Y-1)||(j == 0) || (j == fny - 1)){
-      ps_shared_new[place] = ps_shared_new[place - 2];
-      ph_shared_new[place] = ph_shared_new[place - 2];
-      dpsi_shared_new[place]   = dpsi_shared_new[place - 2];
+      ps_shared[place] = ps_shared[place - 2];
+      ph_shared[place] = ph_shared[place - 2];
+      dpsi_shared[place]   = dpsi_shared[place - 2];
       U_shared[place] = U_shared[place - 2];}}
    __syncthreads();
 
@@ -776,18 +776,18 @@ void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* 
      //cudaDeviceSynchronize();
      merge_PF<<< shared_blocks, BLOCKSIZE >>>(psi_new, phi_new, U_old, psi_old, phi_old, U_new, dpsi_new, dpsi, y_device, \
                      fnx, fny, 2*kt+1, random_nums, shared_num_blockx);
-    // set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, fnx, fny);
+     //set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi_new, fnx, fny);
      //cudaDeviceSynchronize();
-    // rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi, fnx, fny);
+     //rhs_U<<< num_block_2d, blocksize_2d >>>(U_old, U_new, phi_new, dpsi_new, fnx, fny);
 
      //cudaDeviceSynchronize();
-    // rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1, random_nums );
+     //rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_new, phi_new, U_new, psi_old, phi_old, y_device, dpsi, fnx, fny, 2*kt+1, random_nums );
      //cudaDeviceSynchronize();
      set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_new, dpsi, fnx, fny);
      //cudaDeviceSynchronize();
      rhs_U<<< num_block_2d, blocksize_2d >>>(U_new, U_old, phi_old, dpsi, fnx, fny);
      //cudaDeviceSynchronize();
-     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi, fnx, fny, 2*kt+2, random_nums );
+     rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, y_device, dpsi_new, fnx, fny, 2*kt+2, random_nums );
    }
    cudaDeviceSynchronize();
    double endTime = CycleTimer::currentSeconds();
