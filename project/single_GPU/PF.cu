@@ -129,6 +129,39 @@ initialize(float* ps_old, float* ph_old, float* U_old, float* ps_new, float* ph_
   }
 }
 
+__global__ void
+initialize_many(float* ps_old, float* ph_old, float* U_old, float* ps_new, float* ph_new, float* U_new
+           , float* x, float* y, int fnx, int fny){
+
+  int C = blockIdx.x * blockDim.x + threadIdx.x;
+  int j=C/fnx;
+  int i=C-j*fnx;
+  // when initialize, you need to consider C/F layout
+  // if F layout, the 1D array has peroidicity of nx
+  // all the variables should be functions of x and y
+  // size (nx+2)*(ny+2), x:nx, y:ny
+  if ( (i>0) && (i<fnx-1) && (j>0) && (j<fny-1) ) {
+    float xc = x[i];
+    float yc = y[j];
+    int cent = fnx/2;
+
+    int num_cells = 24;
+    float  per_len = cP.lx/num_cells;
+    int devision = (int) xc/per_len; //np.asarray(xx/(lx/24),dtype=int)
+    float loc = per_len/2.0f+devision*per_len;
+
+    ps_old[C] = 5.625f - sqrtf( (xc-loc)*(xc-loc) + yc*yc )/cP.W0 ;
+    //if (C<1000){printf("ps %f\n",ps_old[C]);}
+    ps_new[C] = ps_old[C];
+    U_old[C] = cP.U0;
+    U_new[C] = cP.U0;
+    ph_old[C] = tanhf(ps_old[C]/cP.sqrt2);
+    ph_new[C] = tanhf(ps_new[C]/cP.sqrt2);
+  //  if (C<1000){printf("phi %f\n",ph_old[C]);}
+  }
+
+}
+
 // anisotropy functions
 __device__ float
 atheta(float ux, float uz){
