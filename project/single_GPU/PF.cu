@@ -146,7 +146,7 @@ initialize_many(float* ps_old, float* ph_old, float* U_old, float* ps_new, float
     int cent = fnx/2;
 
     int num_cells = 24;
-    float  per_len = cP.lx/num_cells;
+    float  per_len = cP.lxd/num_cells;
     int devision = (int) xc/per_len; //np.asarray(xx/(lx/24),dtype=int)
     float loc = per_len/2.0f+devision*per_len;
 
