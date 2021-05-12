@@ -80,6 +80,8 @@ struct Mac_input{
   float* Y_mac; 
   float* t_mac;
   float* alpha_mac;
+  float* psi_mac;
+  float* U_mac;
   float* T_3D;
 };
   
@@ -444,6 +446,29 @@ distribute(float *ptr[], BC_buffs BC, int fnx, int fny){
   }
 }
 
+__global__ void
+XY_2D_interp(float* x, float* y, float* X, float* Y, float* u_2d, float* u_m, int Nx, int Ny, int fnx, int fny){
+
+   int C = blockIdx.x * blockDim.x + threadIdx.x;
+   int j=C/fnx;
+   int i=C-j*fnx;
+
+   float Dx = X[1]-X[0]; // (X[Nx-1]-X[0]) / (Nx-1)
+   float Dy = Y[1]-Y[0];
+
+   if ( (i<fnx) && (j<fny) ){
+      //printf("%d ",i);
+      int kx = (int) (( x[i] - X[0] )/Dx);
+      float delta_x = ( x[i] - X[0] )/Dx - kx;
+         //printf("%f ",delta_x);
+      int ky = (int) (( y[j] - Y[0] )/Dy);
+      float delta_y = ( y[j] - Y[0] )/Dy - ky;
+      int offset = kx + ky*Nx;
+      u_m[C] =  (1.0f-delta_x)*(1.0f-delta_y)*u_2d[ offset ] + (1.0f-delta_x)*delta_y*u_2d[ offset+Nx ] \
+               +delta_x*(1.0f-delta_y)*u_2d[ offset+1 ] +   delta_x*delta_y*u_2d[ offset+Nx+1 ];
+      }
+
+}
 
 
 __global__ void
@@ -891,7 +916,7 @@ void commu_BC(MPI_Comm comm, BC_buffs BC, params_MPI pM, int nt, int hd, int fnx
 }
 
 
-void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U){
+void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U, float* alpha){
   // we should have already pass all the data structure in by this time
   // move those data onto device
   int num_gpus_per_node = 4;
@@ -910,7 +935,7 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
   float* phi_old;// = NULL;
   float* phi_new;// = NULL;
   float* dpsi;// = NULL;
-  //float* T_m;
+  float* alpha_m;
   // allocate x, y, phi, psi, U related params
   int length = fnx*fny;
 
@@ -924,14 +949,14 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
   cudaMalloc((void **)&psi_new,  sizeof(float) * length);
   cudaMalloc((void **)&U_new,    sizeof(float) * length);
   cudaMalloc((void **)&dpsi,    sizeof(float) * length);
-  //cudaMalloc((void **)&T_m,    sizeof(float) * length);  
+  cudaMalloc((void **)&alpha_m,    sizeof(float) * length);  
 
   cudaMemcpy(x_device, x, sizeof(float) * fnx, cudaMemcpyHostToDevice);
   cudaMemcpy(y_device, y, sizeof(float) * fny, cudaMemcpyHostToDevice);
   cudaMemcpy(psi_old, psi, sizeof(float) * length, cudaMemcpyHostToDevice);
   cudaMemcpy(phi_old, phi, sizeof(float) * length, cudaMemcpyHostToDevice);
   cudaMemcpy(U_old, U, sizeof(float) * length, cudaMemcpyHostToDevice);
-
+  cudaMemcpy(alpha_m, alpha, sizeof(float) * length, cudaMemcpyHostToDevice);
   // pass all the read-only params into global constant
   cudaMemcpyToSymbol(cP, &params, sizeof(GlobalConstants) );
 
@@ -947,11 +972,19 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
   cudaMalloc((void **)&(Mgpu.X_mac),  sizeof(float) * mac.Nx);
   cudaMalloc((void **)&(Mgpu.Y_mac),  sizeof(float) * mac.Ny);
   cudaMalloc((void **)&(Mgpu.t_mac),    sizeof(float) * mac.Nt);
+  cudaMalloc((void **)&(Mgpu.alpha_mac),    sizeof(float) * mac.Nx*mac.Ny);
+  cudaMalloc((void **)&(Mgpu.psi_mac),    sizeof(float) * mac.Nx*mac.Ny);
+  cudaMalloc((void **)&(Mgpu.U_mac),    sizeof(float) * mac.Nx*mac.Ny);
   cudaMalloc((void **)&(Mgpu.T_3D),    sizeof(float) * mac.Nx*mac.Ny*mac.Nt);
   cudaMemcpy(Mgpu.X_mac, mac.X_mac, sizeof(float) * mac.Nx, cudaMemcpyHostToDevice);  
   cudaMemcpy(Mgpu.Y_mac, mac.Y_mac, sizeof(float) * mac.Ny, cudaMemcpyHostToDevice); 
   cudaMemcpy(Mgpu.t_mac, mac.t_mac, sizeof(float) * mac.Nt, cudaMemcpyHostToDevice);  
+  cudaMemcpy(Mgpu.alpha_mac, mac.alpha_mac, sizeof(float) * mac.Nx*mac.Ny, cudaMemcpyHostToDevice);
+  cudaMemcpy(Mgpu.psi_mac, mac.psi_mac, sizeof(float) * mac.Nx*mac.Ny, cudaMemcpyHostToDevice);
+  cudaMemcpy(Mgpu.U_mac, mac.U_mac, sizeof(float) * mac.Nx*mac.Ny, cudaMemcpyHostToDevice);
   cudaMemcpy(Mgpu.T_3D, mac.T_3D, sizeof(float) * mac.Nt* mac.Nx* mac.Ny, cudaMemcpyHostToDevice);   
+
+
 
   int T_len = mac.Nt* mac.Nx* mac.Ny;
   cudaResourceDesc resDesc;
@@ -995,7 +1028,7 @@ void setup(MPI_Comm comm,  params_MPI pM, GlobalConstants params, Mac_input mac,
      rhs_psi<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, x_device, y_device, dpsi, fnx, fny, 2*kt,\
 t_cur_step, Mgpu.X_mac, Mgpu.Y_mac, Mgpu.t_mac, Mgpu.T_3D, mac.Nx, mac.Ny, mac.Nt );
      //print2d(phi_old,fnx,fny);
-     //if ( (2*kt+2)%params.ha_wd==0 )commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_new, phi_new, U_old, dpsi, phi_old);
+     if ( params.ha_wd==1 ) commu_BC(comm, SR_buffs, pM, 2*kt, params.ha_wd, fnx, fny, psi_new, phi_new, U_old, dpsi, phi_old);
      //cudaDeviceSynchronize();
      set_BC_mpi_x<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);
      set_BC_mpi_y<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_old, dpsi, phi_old, fnx, fny, pM.px, pM.py, pM.nprocx, pM.nprocy, params.ha_wd);

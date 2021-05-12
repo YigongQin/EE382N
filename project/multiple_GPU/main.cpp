@@ -13,6 +13,7 @@
 #include <cmath>
 #include <algorithm>
 #include <iterator>
+#include <hdf5.h>
 using namespace std;
 
 
@@ -87,11 +88,13 @@ struct Mac_input{
   float* Y_mac; 
   float* t_mac;
   float* alpha_mac;
+  float* psi_mac;
+  float* U_mac;
   float* T_3D;
 };
 
 
-void setup(MPI_Comm comm, params_MPI pM, GlobalConstants params, Mac_input mac, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
+void setup(MPI_Comm comm, params_MPI pM, GlobalConstants params, Mac_input mac, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U, float* alpha);
 
 
 // add function for easy retrieving params
@@ -363,12 +366,7 @@ int main(int argc, char** argv)
     float* psi=(float*) malloc(length* sizeof(float));
     float* phi=(float*) malloc(length* sizeof(float));
     float* Uc=(float*) malloc(length* sizeof(float));
-    for(int i=0; i<length; i++){
-        psi[i]=0.0;
-        phi[i]=0.0;
-        Uc[i]=0.0;
-    }
-    
+    float* alpha=(float*) malloc(length* sizeof(float));    
     //std::cout<<"y= ";
     //for(int i=0+length_y; i<2*length_y; i++){
     //    std::cout<<phi[i]<<" ";
@@ -393,11 +391,17 @@ int main(int argc, char** argv)
     mac.X_mac = new float[mac.Nx];
     mac.Y_mac = new float[mac.Ny];
     mac.t_mac = new float[mac.Nt];
+    mac.alpha_mac = new float [mac.Nx*mac.Ny];
+    mac.psi_mac = new float [mac.Nx*mac.Ny];
+    mac.U_mac = new float [mac.Nx*mac.Ny];
     mac.T_3D = new float[mac.Nx*mac.Ny*mac.Nt];
 
     read_input("x.txt", mac.X_mac);
     read_input("y.txt", mac.Y_mac);
     read_input("t.txt", mac.t_mac);
+    read_input("alpha.txt",mac.alpha_mac);
+    read_input("psi",mac.psi_mac);
+    read_input("U",mac.U_mac);
     read_input("Temp.txt", mac.T_3D);
 
     /*std::cout<<"y= ";
@@ -407,7 +411,34 @@ int main(int argc, char** argv)
     std::cout<<std::endl;
    */
 
-    setup(comm, pM, params, mac, length_x, length_y, x, y, phi, psi, Uc);
+    float Dx = mac.X_mac[1] - mac.X_mac[0];
+    float Dy = mac.Y_mac[1] - mac.Y_mac[0];
+    for(int id=0; id<length; id++){
+
+      int j = id/length_x;
+      int i = id%length_x; 
+
+      int kx = (int) (( x[i] - mac.X_mac[0] )/Dx);
+      float delta_x = ( x[i] - mac.X_mac[0] )/Dx - kx;
+         //printf("%f ",delta_x);
+      int ky = (int) (( y[j] - mac.Y_mac[0] )/Dy);
+      float delta_y = ( y[j] - mac.Y_mac[0] )/Dy - ky;
+      int offset = kx + ky*mac.Nx;
+      psi[id] =  (1.0f-delta_x)*(1.0f-delta_y)*mac.psi_mac[ offset ] + (1.0f-delta_x)*delta_y*mac.psi_mac[ offset+length_x ]+\
+               delta_x*(1.0f-delta_y)*mac.psi_mac[ offset+1 ] +   delta_x*delta_y*mac.psi_mac[ offset+length_x+1 ];
+
+      Uc[id] =  (1.0f-delta_x)*(1.0f-delta_y)*mac.U_mac[ offset ] + (1.0f-delta_x)*delta_y*mac.U_mac[ offset+length_x ]+\
+               delta_x*(1.0f-delta_y)*mac.U_mac[ offset+1 ] +   delta_x*delta_y*mac.U_mac[ offset+length_x+1 ];
+
+      alpha[id] =  (1.0f-delta_x)*(1.0f-delta_y)*mac.alpha_mac[ offset ] + (1.0f-delta_x)*delta_y*mac.alpha_mac[ offset+length_x ]\
+               +delta_x*(1.0f-delta_y)*mac.alpha_mac[ offset+1 ] +   delta_x*delta_y*mac.alpha_mac[ offset+length_x+1 ];
+      //psi[id]=0.0;
+      phi[id]=tanhf(psi[id]);
+      //Uc[id]=0.0;
+    }
+
+
+    setup(comm, pM, params, mac, length_x, length_y, x, y, phi, psi, Uc, alpha);
 
     //std::cout<<"y= ";
     //for(int i=0+length_y; i<2*length_y; i++){
@@ -415,11 +446,49 @@ int main(int argc, char** argv)
     //}
     //std::cout<<std::endl;
     // step 3 (time marching): call the kernels Mt times
-    string out_format = "_data.csv";
+    string out_format = "_data.h5";
     string out_file = to_string(pM.rank) + out_format;
-    ofstream out( out_file );
+   // ofstream out( out_file );
+   // out.precision(5);
+   // copy( phi, phi + length, ostream_iterator<float>( out, "\n" ) );
+
+    // claim file and dataset handles
+    hid_t  h5_file, phi_o, U_o, dataspace, xcoor, ycoor, dataspacex, dataspacey;
+    hsize_t dimsf[2], dimx[1], dimy[1], dimf[1];
+    herr_t  status;
+    dimsf[0] = length; dimsf[1] = params.nts; dimx[0]=length_x; dimy[0]=length_y; dimf[0]=length;
+
+    // claim file and dataset handles
+    // create file, data spaces and datasets
+    h5_file = H5Fcreate(out_file.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    dataspace = H5Screate_simple(1, dimf, NULL);
+    dataspacex = H5Screate_simple(1, dimx, NULL);
+    dataspacey = H5Screate_simple(1, dimy, NULL);
+    xcoor = H5Dcreate2(h5_file, "x_coordinates", H5T_NATIVE_FLOAT_g, dataspacex,H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    ycoor = H5Dcreate2(h5_file, "y_coordinates", H5T_NATIVE_FLOAT_g, dataspacey,H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    phi_o = H5Dcreate2(h5_file, "phi", H5T_NATIVE_FLOAT_g, dataspace,H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    U_o = H5Dcreate2(h5_file, "Uc", H5T_NATIVE_FLOAT_g, dataspace,H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+    // write the coordinates, temperature field and the true solution to the hdf5 file
+    status = H5Dwrite(phi_o, H5T_NATIVE_FLOAT_g, H5S_ALL, H5S_ALL, H5P_DEFAULT, phi);
+    status = H5Dwrite(U_o, H5T_NATIVE_FLOAT_g, H5S_ALL, H5S_ALL, H5P_DEFAULT, Uc);
+    status = H5Dwrite(xcoor, H5T_NATIVE_FLOAT_g, H5S_ALL, H5S_ALL, H5P_DEFAULT, x);
+    status = H5Dwrite(ycoor, H5T_NATIVE_FLOAT_g, H5S_ALL, H5S_ALL, H5P_DEFAULT, y);
+
+    // close all the hdf handles
+    H5Sclose(dataspace);H5Sclose(dataspacex);
+    H5Dclose(phi_o);
+    H5Dclose(U_o);
+    H5Dclose(xcoor);
+    H5Dclose(ycoor);H5Sclose(dataspacey);
+    H5Fclose(h5_file);
+
+    string out_format_c = "_data.csv";
+    string out_file_c = to_string(pM.rank) + out_format_c;
+    ofstream out( out_file_c );
     out.precision(5);
     copy( phi, phi + length, ostream_iterator<float>( out, "\n" ) );
+
     MPI_Finalize();
     delete[] phi;
     delete[] Uc;
