@@ -857,7 +857,7 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
    int num_block_2d = (fnx*fny+blocksize_2d-1)/blocksize_2d;
    int num_block_1d = (fnx+fny+blocksize_1d-1)/blocksize_1d;
    printf("block size %d, # blocks %d\n", blocksize_2d, num_block_2d); 
-   initialize_many<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, U_new, x_device, y_device, fnx, fny);
+   initialize<<< num_block_2d, blocksize_2d >>>(psi_old, phi_old, U_old, psi_new, phi_new, U_new, x_device, y_device, fnx, fny);
    set_BC<<< num_block_1d, blocksize_1d >>>(psi_new, phi_new, U_new, dpsi, fnx, fny);
    set_BC<<< num_block_1d, blocksize_1d >>>(psi_old, phi_old, U_old, dpsi, fnx, fny);
    cudaDeviceSynchronize();
@@ -959,6 +959,7 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
       double time2 = CycleTimer::currentSeconds();
       totalTime1+=(time2-time1);
       if((2*kt)%interval==0){
+        double timeStart=CycleTimer::currentSeconds();
         //getMeanY<<<my_numBlockX,my_blockSize>>>(phi_new, meanY, fnx, fny);
         setZero<<<(meanYLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanY, meanYLength);
         
@@ -966,11 +967,11 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
         getMeanY_parallel<<<my_numBlock2d_x,my_blockSize2d_x>>>(phi_new, meanY, fnx, fny, boxNum, boxLeftBound_device, boxRightBound_device, boxUpperBound_device, boxLowerBound_device, meanYStartIndex_device);
         //divide<<<(meanYLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanY, meanYLength, boxSizeY_device, meanYStartIndex_device, boxNum);
         divide_simple<<<(meanYLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanY, meanYLength, fny*fnx);
-      }
+    
 
-      cudaDeviceSynchronize();
-      double time3 = CycleTimer::currentSeconds();
-      totalTime2+=(time3-time2);
+      //cudaDeviceSynchronize();
+      //double time3 = CycleTimer::currentSeconds();
+      //totalTime2+=(time3-time2);
 
       //1d parallel
       //getMeanX<<<my_numBlockY,my_blockSize>>>(phi_new, meanX, fnx, fny);
@@ -979,17 +980,17 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
       // setZero<<<num_block_2d, blocksize_2d>>>(meanX, fny);
       // getSumX_parallel<<<my_numBlock2d_y,my_blockSize2d_y>>>(phi_new, meanX, fnx, fny);
       // divide<<<num_block_2d, blocksize_2d>>>(meanX, fny, fnx);
-      if((2*kt)%interval==0){
+ 
         setZero<<<(meanXLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanX, meanXLength);
         //getSumX_parallel<<<my_numBlock2d_y,my_blockSize2d_y>>>(phi_new, meanX, fnx, fny, boxNum, boxLeftBound_device, boxRightBound_device, boxUpperBound_device, boxLowerBound_device, meanXStartIndex_device);
         getMeanX_parallel<<<my_numBlock2d_y,my_blockSize2d_y>>>(phi_new, meanX, fnx, fny, boxNum, boxLeftBound_device, boxRightBound_device, boxUpperBound_device, boxLowerBound_device, meanXStartIndex_device);
         //divide<<<(meanXLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanX, meanXLength, boxSizeX_device, meanXStartIndex_device, boxNum);
         divide_simple<<<(meanXLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanX, meanXLength, fnx*fny);
-      }
+      
 
-      cudaDeviceSynchronize();
-      double time4 = CycleTimer::currentSeconds();
-      totalTime3+=(time4-time3);
+      //cudaDeviceSynchronize();
+      //double time4 = CycleTimer::currentSeconds();
+      //totalTime3+=(time4-time3);
 
       //setMeanY4Test<<<(meanYLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanY, meanYLength);
 
@@ -1018,15 +1019,15 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
       //   printf("%f ", meanX_host[i]);
       // }
       // printf("\n");
-      if((2*kt)%interval==0){
+
         getTip<<<1,boxNum>>>(meanX, meanXStartIndex_device, tipPos_device, (2*kt)/interval, boxLowerBound_device, statsBoxLength);
         
         getCell<<<1,boxNum>>>(meanY, meanYStartIndex_device, cellNum_device, (2*kt)/interval, statsBoxLength);
-      }
+      
 
-      cudaDeviceSynchronize();
-      double time5 = CycleTimer::currentSeconds();
-      totalTime4+=(time5-time4);
+      //cudaDeviceSynchronize();
+      //double time5 = CycleTimer::currentSeconds();
+      //totalTime4+=(time5-time4);
 
       //getC<<<num_block_2d, blocksize_2d>>>(C, U_new, phi_new, fnx, fny);
 
@@ -1041,13 +1042,16 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
       // }
 
       //simpleSum<<<num_block_2d, blocksize_2d>>>(C, asc_device, 2*kt, length);
-      if((2*kt)%interval==0){
+      
         getCAvg<<<my_numBlock2d_xy,my_blockSize2d_xy>>>
         (U_new, phi_new, fnx, fny, asc_device, (2*kt)/interval, boxNum, boxLeftBound_device, boxRightBound_device, boxLowerBound_device, boxUpperBound_device, statsBoxLength);
+        cudaDeviceSynchronize();
+        double timeEnd=CycleTimer::currentSeconds();
+      totalTime2+=(timeEnd-timeStart);
       }
-      cudaDeviceSynchronize();
-      double time6 = CycleTimer::currentSeconds();
-      totalTime5+=(time6-time5);
+      // cudaDeviceSynchronize();
+      // double time6 = CycleTimer::currentSeconds();
+      // totalTime5+=(time6-time5);
       
 
       //cudaDeviceSynchronize();
@@ -1143,7 +1147,7 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
    printf("time for %d iterations: %f s\n", params.Mt, endTime-startTime);
 
    printf("times in each iteration: %f, %f, %f, %f, %f\n", 
-   totalTime1*2/params.Mt, totalTime2*2/params.Mt, totalTime3*2/params.Mt, totalTime4*2/params.Mt, totalTime5*2/params.Mt);
+   totalTime1*2/params.Mt, totalTime2/statsBoxLength, totalTime3*2/params.Mt, totalTime4*2/params.Mt, totalTime5*2/params.Mt);
 
    cudaMemcpy(psi, psi_old, length * sizeof(float),cudaMemcpyDeviceToHost);
    cudaMemcpy(phi, phi_old, length * sizeof(float),cudaMemcpyDeviceToHost);
