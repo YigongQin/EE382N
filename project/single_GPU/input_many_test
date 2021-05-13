@@ -41,7 +41,7 @@ Created on Fri May 29 11:10:53 2020
     lxd = dx*W0*nx                     # horizontal length in micron
     lyd = asp_ratio*lxd
 
-    Mt = 150000                   	# total  number of time steps
+    Mt = 15                  	# total  number of time steps
 
     eta = 0.0                		# magnitude of noise
 

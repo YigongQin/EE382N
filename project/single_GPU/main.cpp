@@ -12,9 +12,7 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
-#include <stdexcept>
-#include <algorithm>
-#include <iterator>
+#include "mat.h"
 // #include <mat.h> 
 using namespace std;
 
@@ -64,6 +62,7 @@ struct GlobalConstants {
 };
 
 void setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U);
+void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, float* phi, float* psi,float* U, int* tipPos, float* cellNum, float* asc, int boxNum, int* boxSizeX, int*boxSizeY, int* boxPosX, int* boxPosY);
 
 
 // add function for easy retrieving params
@@ -101,6 +100,7 @@ int main(int argc, char** argv)
     // and print out information: lxd, nx, ny, Mt
     // Create a text string, which is used to output the text file
     char* fileName=argv[1];
+    char* boxNumStr=argv[2];
     std::string lineText;
 
     std::ifstream parseFile(fileName);
@@ -140,7 +140,6 @@ int main(int argc, char** argv)
 
     // Close the file
     parseFile.close();
-    
     // calculate the parameters
     params.lT = params.c_infm*( 1.0/params.k-1 )/params.G;//       # thermal length           um
     params.lamd = 5*sqrt(2.0)/8*params.W0/params.d0;//     # coupling constant
@@ -245,8 +244,32 @@ int main(int argc, char** argv)
     //    std::cout<<phi[i]<<" ";
     //}
     //std::cout<<std::endl;
-
-    setup(params, length_x, length_y, x, y, phi, psi, Uc);
+    int boxNum=atoi(boxNumStr);
+    int boxSizeX[boxNum];
+    for(int i=0; i<boxNum; i++){
+        boxSizeX[i]=250;
+    }
+    int boxSizeY[boxNum];
+    for(int i=0; i<boxNum; i++){
+        boxSizeY[i]=600;
+    }
+    int boxPosX[boxNum];
+    int boxPosY[boxNum];
+    // for(int i=0; i<boxNum; i++){
+    //     boxPosX[i]=i*params.nx/boxNum;
+    //     boxPosY[i]=i*params.ny/boxNum;
+    // }
+    for(int i=0; i<boxNum; i++){
+        boxPosX[i]=i*params.nx/boxNum;
+        boxPosY[i]=0;
+    }
+    int interval=1000;
+    int boxStatsLength= (params.Mt+interval-1)/interval;
+    int tipPos[boxStatsLength*boxNum];
+    float cellNum[boxStatsLength*boxNum];
+    float asc[boxStatsLength*boxNum];
+    printf("starting kernel\n");
+    my_setup(params, length_x, length_y, x, y, phi, psi, Uc, tipPos, cellNum, asc, boxNum, boxSizeX, boxSizeY, boxPosX, boxPosY);
 
     //std::cout<<"y= ";
     //for(int i=0+length_y; i<2*length_y; i++){
@@ -254,11 +277,22 @@ int main(int argc, char** argv)
     //}
     //std::cout<<std::endl;
     // step 3 (time marching): call the kernels Mt times
-    ofstream out( "data.csv" );
-    out.precision(5);
-    //out << phi << "\n";
-    copy( phi, phi + length, ostream_iterator<float>( out, "\n" ) );
-
+    double* phi_arr= new double[length];
+    for(int i=0; i<length; i++){
+         phi_arr[i] = (double) phi[i];
+    } 
+    // // step 4: save the psi, phi, U to a .mat file
+    MATFile *pmatFile = NULL;
+    mxArray *pMxArray = NULL;
+    pmatFile = matOpen("out.mat","w");
+    pMxArray = mxCreateDoubleMatrix(length_x, length_y, mxREAL);
+    mxSetData(pMxArray, phi_arr);
+    matPutVariable(pmatFile, "phi", pMxArray);
+    //mxSetData(pMxArray, phi);
+    //matPutVariable(pmatFile, "phi", pMxArray);
+    //mxSetData(pMxArray, U);
+    //matPutVariable(pmatFile, "U", pMxArray);
+    matClose(pmatFile);
     delete[] phi;
     delete[] Uc;
     delete[] psi;
