@@ -1154,7 +1154,8 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
 
     //  printf("times in each iteration: %f, %f, %f, %f, %f\n", 
     //  totalTime1*2/params.Mt, totalTime2/total_test_iteration, totalTime3/total_test_iteration, totalTime4*2/params.Mt, totalTime5*2/params.Mt);
-    printf("GPU stats time: %f\n", totalTime3/total_test_iteration);
+    //printf("GPU stats time: %f\n", totalTime3/total_test_iteration);
+    printf("GPU stats time: %f\n", totalTime2*1000/total_test_iteration);
    cudaMemcpy(psi, psi_old, length * sizeof(float),cudaMemcpyDeviceToHost);
    cudaMemcpy(phi, phi_old, length * sizeof(float),cudaMemcpyDeviceToHost);
    cudaMemcpy(U, U_old, length * sizeof(float),cudaMemcpyDeviceToHost);
