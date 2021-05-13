@@ -100,6 +100,7 @@ int main(int argc, char** argv)
     // and print out information: lxd, nx, ny, Mt
     // Create a text string, which is used to output the text file
     char* fileName=argv[1];
+    char* boxNumStr=argv[2];
     std::string lineText;
 
     std::ifstream parseFile(fileName);
@@ -243,10 +244,10 @@ int main(int argc, char** argv)
     //    std::cout<<phi[i]<<" ";
     //}
     //std::cout<<std::endl;
-    int boxNum=6;
+    int boxNum=atoi(boxNumStr);
     int boxSizeX[boxNum];
     for(int i=0; i<boxNum; i++){
-        boxSizeX[i]=500;
+        boxSizeX[i]=250;
     }
     int boxSizeY[boxNum];
     for(int i=0; i<boxNum; i++){
