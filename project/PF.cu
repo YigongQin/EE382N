@@ -946,6 +946,7 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
     double totalTime4=0;
     double totalTime5=0;
 
+    int total_test_iteration=0;
    for (int kt=0; kt<params.Mt/2; kt++){
       double time1 = CycleTimer::currentSeconds();
    //  printf("time step %d\n",kt);
@@ -957,9 +958,11 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
       
       cudaDeviceSynchronize();
       double time2 = CycleTimer::currentSeconds();
-      totalTime1+=(time2-time1);
+      totalTime1+=(time2-time1);\
+      
       if((2*kt)%interval==0){
         double timeStart=CycleTimer::currentSeconds();
+        clock_t start_1 = clock();
         //getMeanY<<<my_numBlockX,my_blockSize>>>(phi_new, meanY, fnx, fny);
         setZero<<<(meanYLength+my_blockSize-1)/my_blockSize, my_blockSize>>>(meanY, meanYLength);
         
@@ -1047,7 +1050,10 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
         (U_new, phi_new, fnx, fny, asc_device, (2*kt)/interval, boxNum, boxLeftBound_device, boxRightBound_device, boxLowerBound_device, boxUpperBound_device, statsBoxLength);
         cudaDeviceSynchronize();
         double timeEnd=CycleTimer::currentSeconds();
+        clock_t end_1 = clock();
       totalTime2+=(timeEnd-timeStart);
+      totalTime3+=(double) (end_1-start_1) / CLOCKS_PER_SEC * 1000.0;
+      total_test_iteration++;
       }
       // cudaDeviceSynchronize();
       // double time6 = CycleTimer::currentSeconds();
@@ -1146,9 +1152,9 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
    double endTime = CycleTimer::currentSeconds();
    printf("time for %d iterations: %f s\n", params.Mt, endTime-startTime);
 
-   printf("times in each iteration: %f, %f, %f, %f, %f\n", 
-   totalTime1*2/params.Mt, totalTime2/statsBoxLength, totalTime3*2/params.Mt, totalTime4*2/params.Mt, totalTime5*2/params.Mt);
-
+    //  printf("times in each iteration: %f, %f, %f, %f, %f\n", 
+    //  totalTime1*2/params.Mt, totalTime2/total_test_iteration, totalTime3/total_test_iteration, totalTime4*2/params.Mt, totalTime5*2/params.Mt);
+    printf("GPU stats time: %f\n", totalTime3/total_test_iteration);
    cudaMemcpy(psi, psi_old, length * sizeof(float),cudaMemcpyDeviceToHost);
    cudaMemcpy(phi, phi_old, length * sizeof(float),cudaMemcpyDeviceToHost);
    cudaMemcpy(U, U_old, length * sizeof(float),cudaMemcpyDeviceToHost);
@@ -1158,7 +1164,80 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
   //    }
   //    printf("\n");
   //  }
+float meanX_test[meanXLength];
+float meanY_test[meanYLength];
+double cpuStartTime = CycleTimer::currentSeconds();
+clock_t start = clock();
 
+  for(int boxIndex=0; boxIndex<boxNum; boxIndex++){
+    for(int i=boxLowerBound[boxIndex]; i<=boxUpperBound[boxIndex]; i++){
+      float mean=0;
+      for(int j=boxLeftBound[boxIndex]; j<=boxRightBound[boxIndex]; j++){
+        mean=mean+phi[i*fnx+j];
+      }
+      meanX_test[meanXStartIndex[boxIndex]+i]=mean/(boxRightBound[boxIndex]-boxLeftBound[boxIndex]);
+    }
+  }
+  for(int boxIndex=0; boxIndex<boxNum; boxIndex++){
+    int i=meanXStartIndex[boxIndex+1]-1;
+  //int epsilon=0.0000001f;
+  //printf("startIndex=%d, meanX[%d]=%f\n", startIndex[index], i, meanX[i]);
+  while(i>=meanXStartIndex[boxIndex] && !(meanX_test[i]>(-1.0f))){
+    //printf("%d ", i);
+    i--;
+  }
+  if(i!=meanXStartIndex[boxIndex]-1)tipPos[boxIndex*statsBoxLength]=i-meanXStartIndex[boxIndex]+boxLowerBound[boxIndex];
+  else tipPos[boxIndex*statsBoxLength]=-1;
+  }
+  
+  for(int boxIndex=0; boxIndex<boxNum; boxIndex++){
+    for(int j=boxLeftBound[boxIndex]; j<=boxRightBound[boxIndex]; j++){
+      float mean=0;
+      for(int i=boxLowerBound[boxIndex]; i<=boxUpperBound[boxIndex]; i++){
+        mean=mean+phi[i*fnx+j];
+      }
+      meanY_test[meanYStartIndex[boxIndex]+j-boxLeftBound[boxIndex]]=mean/(boxUpperBound[boxIndex]-boxLowerBound[boxIndex]+1);
+    }
+  }
+
+      // for(int i=0; i<meanYLength; i++){
+      //   printf("%f ",meanY_test[i]);
+      // }
+      // printf("\n");
+  for(int boxIndex=0; boxIndex<boxNum; boxIndex++){
+    int index=boxIndex;
+  bool positive=meanY_test[meanYStartIndex[index]]>0;
+  float crossNum=0;
+  for(int i=meanYStartIndex[index]; i<meanYStartIndex[index+1]; i++){
+    //if(index==3)printf("positive=%d, meanY[%d]=%f\n", positive, i, meanY[i]);
+    if((positive && meanY_test[i]<0) || (!positive && meanY_test[i]>0)){
+      //if(index==3)printf("crossNum added 1\n");
+      positive=!positive;
+      crossNum=crossNum+1;
+    }
+  }
+  //if(index==3)printf("box=%d, startIndex=%d, endIndex=%d, cross=%f\n",index, startIndex[index], startIndex[index+1], crossNum);
+  cellNum[index*statsBoxLength]=crossNum/2;
+  }
+  float asc_final=0;
+  float c_infty=2.45e-3;
+  float k=0.14;
+for(int boxIndex=0; boxIndex<boxNum; boxIndex++){
+    float asc_final=0;
+    float mean=0;
+    for(int i=boxLowerBound[boxIndex]; i<=boxUpperBound[boxIndex]; i++){
+      for(int j=boxLeftBound[boxIndex]; j<=boxRightBound[boxIndex]; j++){
+        mean=mean+c_infty*(U[i*fnx+j]*(1-k)+k)*(1-phi[i*fnx+j]+k*(1+phi[i*fnx+j]))/(2*k);
+      }
+    }
+    asc_final=mean/((boxUpperBound[boxIndex]-boxLowerBound[boxIndex]+1)*(boxRightBound[boxIndex]-boxLeftBound[boxIndex]+1));
+    asc[boxIndex*statsBoxLength]=asc_final;
+  }
+  
+clock_t end = clock();
+double time = (double) (end-start) / CLOCKS_PER_SEC * 1000.0;
+  double cpuEndTime = CycleTimer::currentSeconds();
+  printf("cpu stats time: %f\n",time);
   // float asc_final=0;
   // float c_infty=2.45e-3;
   // float k=0.14;
@@ -1170,7 +1249,39 @@ void my_setup(GlobalConstants params, int fnx, int fny, float* x, float* y, floa
   // }
   // asc_final=asc_final/length;
   // printf("\nasc_final=%f\n", asc_final);
+      printf("tipPos:\n");
+      // for(int i=0; i<statsArrayLength; i++){
+      //   printf("%d ", tipPos[i]);
+      // }
+      // printf("\n");
+      for(int i=0; i<boxNum; i++){
+        printf("box %d: ", i);
+        for(int j=0; j<1; j++){
+          printf("%d ", tipPos[i*statsBoxLength+j]);
+        }
+        printf("\n");
+      }
+      printf("\n");
 
+      printf("cellNum:\n");
+      for(int i=0; i<boxNum; i++){
+        printf("box %d: ", i);
+        for(int j=0; j<1; j++){
+          printf("%f ", cellNum[i*statsBoxLength+j]);
+        }
+        printf("\n");
+      }
+      printf("\n");
+
+      printf("asc:\n");
+      for(int i=0; i<boxNum; i++){
+        printf("box %d: ", i);
+        for(int j=0; j<1; j++){
+          printf("%f ", asc[i*statsBoxLength+j]);
+        }
+        printf("\n");
+      }
+      printf("\n");
   cudaFree(x_device); cudaFree(y_device);
   cudaFree(psi_old); cudaFree(psi_new);
   cudaFree(phi_old); cudaFree(phi_new);
